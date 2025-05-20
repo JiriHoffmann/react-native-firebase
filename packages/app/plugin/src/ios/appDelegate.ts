@@ -70,13 +70,14 @@ export function modifyObjcAppDelegate(contents: string): string {
 
 export function modifySwiftAppDelegate(contents: string): string {
   const methodInvocationBlock = `FirebaseApp.configure()`;
-  const methodInvocationLineMatcher = /(?:self\.moduleName\s*=\s*"([^"]*)")/g;
+  const methodInvocationLineMatcher =
+    /(?:self\.moduleName\s*=\s*"([^"]*)")|(?:factory\.startReactNative\()/;
 
   // Add import
   if (!contents.includes('import FirebaseCore')) {
     contents = contents.replace(
-      /import ReactAppDependencyProvider/g,
-      `import ReactAppDependencyProvider
+      /import Expo/g,
+      `import Expo
 import FirebaseCore`,
     );
   }

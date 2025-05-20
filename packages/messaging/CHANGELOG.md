@@ -3,6 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [22.2.0](https://github.com/invertase/react-native-firebase/compare/v22.1.0...v22.2.0) (2025-05-12)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
+## [22.1.0](https://github.com/invertase/react-native-firebase/compare/v22.0.0...v22.1.0) (2025-04-30)
+
+### Bug Fixes
+
+- **messaging:** correctly pass options in modular getToken/deleteToken ([d29dfc8](https://github.com/invertase/react-native-firebase/commit/d29dfc8ee153c68cb9a1840c105061776403fe26))
+
+## [22.0.0](https://github.com/invertase/react-native-firebase/compare/v21.14.0...v22.0.0) (2025-04-25)
+
+### Bug Fixes
+
+- **android:** use `=` assignment vs deprecated space-assignment ([39c2ecb](https://github.com/invertase/react-native-firebase/commit/39c2ecb0069a8a5a65b04fb7f86ccecf83273868))
+- enable provenance signing during publish ([4535f0d](https://github.com/invertase/react-native-firebase/commit/4535f0d5756c89aeb8f8e772348c71d8176348be))
+
+## [21.14.0](https://github.com/invertase/react-native-firebase/compare/v21.13.0...v21.14.0) (2025-04-14)
+
+### Features
+
+- **messaging, android:** notification delegation APIs, firebase.json feature toggle ([c0c5054](https://github.com/invertase/react-native-firebase/commit/c0c505432e95c85fa6621b548b24e755e2894c37))
+- **messaging, android:** support BigQuery export setting in firebase.json ([fa0e967](https://github.com/invertase/react-native-firebase/commit/fa0e967f9a06719c159a4980749f80c5ff2e2c39))
+
+## [21.13.0](https://github.com/invertase/react-native-firebase/compare/v21.12.3...v21.13.0) (2025-03-31)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
+## [21.12.3](https://github.com/invertase/react-native-firebase/compare/v21.12.2...v21.12.3) (2025-03-26)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
+## [21.12.2](https://github.com/invertase/react-native-firebase/compare/v21.12.1...v21.12.2) (2025-03-23)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
+## [21.12.1](https://github.com/invertase/react-native-firebase/compare/v21.12.0...v21.12.1) (2025-03-22)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
+## [21.12.0](https://github.com/invertase/react-native-firebase/compare/v21.11.0...v21.12.0) (2025-03-03)
+
+**Note:** Version bump only for package @react-native-firebase/messaging
+
 ## [21.11.0](https://github.com/invertase/react-native-firebase/compare/v21.10.1...v21.11.0) (2025-02-20)
 
 ### Bug Fixes

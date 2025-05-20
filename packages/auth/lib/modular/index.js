@@ -16,6 +16,11 @@
  */
 
 import { getApp } from '@react-native-firebase/app';
+import { fetchPasswordPolicy } from '../password-policy/passwordPolicyApi';
+import { PasswordPolicyImpl } from '../password-policy/PasswordPolicyImpl';
+import FacebookAuthProvider from '../providers/FacebookAuthProvider';
+import { MultiFactorUser } from '../multiFactor';
+export { FacebookAuthProvider };
 
 /**
  * @typedef {import('@firebase/app-types').FirebaseApp} FirebaseApp
@@ -161,7 +166,7 @@ export async function getRedirectResult(auth, resolver) {
  * Checks if an incoming link is a sign-in with email link suitable for signInWithEmailLink().
  * @param {Auth} auth - The Auth instance.
  * @param {string} emailLink - The email link to check.
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
 export function isSignInWithEmailLink(auth, emailLink) {
   return auth.isSignInWithEmailLink(emailLink);
@@ -186,6 +191,15 @@ export function onAuthStateChanged(auth, nextOrObserver) {
 export function onIdTokenChanged(auth, nextOrObserver) {
   return auth.onIdTokenChanged(nextOrObserver);
 }
+
+/**
+ * Revoke the given access token, Currently only supports Apple OAuth access tokens.
+ * @param auth - The Auth Instance.
+ * @param token - The Access Token
+ */
+export async function revokeAccessToken(auth, token) {
+  throw new Error('revokeAccessToken() is only supported on Web');
+} //TO DO: Add Support
 
 /**
  * Sends a password reset email to the given email address.
@@ -449,7 +463,7 @@ export async function linkWithRedirect(user, provider, resolver) {
  * @returns {MultiFactorUser}
  */
 export function multiFactor(user) {
-  return user._auth.multiFactor(user);
+  return new MultiFactorUser(getAuth(), user);
 }
 
 /**
@@ -591,4 +605,24 @@ export function getAdditionalUserInfo(userCredential) {
  */
 export function getCustomAuthDomain(auth) {
   return auth.getCustomAuthDomain();
+}
+
+/**
+ * Returns a password validation status
+ * @param {Auth} auth - The Auth instance.
+ * @param {string} password - The password to validate.
+ * @returns {Promise<PasswordValidationStatus>}
+ */
+export async function validatePassword(auth, password) {
+  if (password === null || password === undefined) {
+    throw new Error(
+      "firebase.auth().validatePassword(*) expected 'password' to be a non-null or a defined value.",
+    );
+  }
+  let passwordPolicy = await fetchPasswordPolicy(auth);
+
+  const passwordPolicyImpl = await new PasswordPolicyImpl(passwordPolicy);
+  let status = passwordPolicyImpl.validatePassword(password);
+
+  return status;
 }

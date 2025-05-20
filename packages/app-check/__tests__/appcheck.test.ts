@@ -20,6 +20,11 @@ import {
   setTokenAutoRefreshEnabled,
   onTokenChanged,
   CustomProvider,
+  ReactNativeFirebaseAppCheckProviderOptions,
+  ReactNativeFirebaseAppCheckProviderAndroidOptions,
+  ReactNativeFirebaseAppCheckProviderAppleOptions,
+  ReactNativeFirebaseAppCheckProviderWebOptions,
+  ReactNativeFirebaseAppCheckProvider,
 } from '../lib';
 
 describe('appCheck()', function () {
@@ -77,6 +82,28 @@ describe('appCheck()', function () {
     it('`CustomProvider` function is properly exposed to end user', function () {
       expect(CustomProvider).toBeDefined();
     });
+
+    it('`ReactNativeAppCheckProvider objects are properly exposed to end user', function () {
+      expect(ReactNativeFirebaseAppCheckProvider).toBeDefined();
+      const provider = new ReactNativeFirebaseAppCheckProvider();
+      expect(provider.configure).toBeDefined();
+      const options = { debugToken: 'foo' } as ReactNativeFirebaseAppCheckProviderOptions;
+      const appleOptions = {
+        provider: 'debug',
+        ...options,
+      } as ReactNativeFirebaseAppCheckProviderAppleOptions;
+      expect(appleOptions).toBeDefined();
+      const androidOptions = {
+        provider: 'debug',
+        ...options,
+      } as ReactNativeFirebaseAppCheckProviderAndroidOptions;
+      expect(androidOptions).toBeDefined();
+      const webOptions = {
+        provider: 'debug',
+        ...options,
+      } as ReactNativeFirebaseAppCheckProviderWebOptions;
+      expect(webOptions).toBeDefined();
+    });
   });
 
   describe('test `console.warn` is called for RNFB v8 API & not called for v9 API', function () {
@@ -107,6 +134,7 @@ describe('appCheck()', function () {
 
     describe('AppCheck', function () {
       it('appCheck.activate()', function () {
+        // @ts-ignore
         const appCheck = firebase.appCheck.call(null, getApp(), MODULAR_DEPRECATION_ARG);
         appCheckRefV9Deprecation(
           () =>
@@ -126,6 +154,7 @@ describe('appCheck()', function () {
       });
 
       it('appCheck.setTokenAutoRefreshEnabled()', function () {
+        // @ts-ignore
         const appCheck = firebase.appCheck.call(null, getApp(), MODULAR_DEPRECATION_ARG);
         appCheckRefV9Deprecation(
           () => setTokenAutoRefreshEnabled(appCheck, true),
@@ -135,6 +164,7 @@ describe('appCheck()', function () {
       });
 
       it('appCheck.getToken()', function () {
+        // @ts-ignore
         const appCheck = firebase.appCheck.call(null, getApp(), MODULAR_DEPRECATION_ARG);
         appCheckRefV9Deprecation(
           () => getToken(appCheck, true),
@@ -144,6 +174,7 @@ describe('appCheck()', function () {
       });
 
       it('appCheck.getLimitedUseToken()', function () {
+        // @ts-ignore
         const appCheck = firebase.appCheck.call(null, getApp(), MODULAR_DEPRECATION_ARG);
         appCheckRefV9Deprecation(
           () => getLimitedUseToken(appCheck),
@@ -153,6 +184,7 @@ describe('appCheck()', function () {
       });
 
       it('appCheck.onTokenChanged()', function () {
+        // @ts-ignore
         const appCheck = firebase.appCheck.call(null, getApp(), MODULAR_DEPRECATION_ARG);
         appCheckRefV9Deprecation(
           () =>

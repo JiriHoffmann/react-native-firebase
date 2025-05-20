@@ -33,10 +33,6 @@ export function getMessaging(app) {
  * @returns {Promise<void>}
  */
 export function deleteToken(messaging, tokenOptions) {
-  if (tokenOptions != null) {
-    return messaging.deleteToken();
-  }
-
   return messaging.deleteToken(tokenOptions);
 }
 
@@ -47,10 +43,6 @@ export function deleteToken(messaging, tokenOptions) {
  * @returns {Promise<string>}
  */
 export function getToken(messaging, options) {
-  if (options != null) {
-    return messaging.getToken();
-  }
-
   return messaging.getToken(options);
 }
 
@@ -315,6 +307,28 @@ export function unsubscribeFromTopic(messaging, topic) {
  */
 export function isDeliveryMetricsExportToBigQueryEnabled(messaging) {
   return messaging.isDeliveryMetricsExportToBigQueryEnabled;
+}
+
+/**
+ * Returns a boolean whether message delegation is enabled. Android only,
+ * always returns false on iOS
+ * @param {Messaging} messaging - Messaging instance.
+ * @returns {boolean}
+ */
+export function isNotificationDelegationEnabled(messaging) {
+  return messaging.isNotificationDelegationEnabled;
+}
+
+/**
+ * Sets whether message notification delegation is enabled or disabled.
+ * The value is false by default. Set this to true to allow delegation of notification to Google Play Services.
+ * Note if true message handlers will not function on Android, and it has no effect on iOS
+ * @param {Messaging} messaging - Messaging instance.
+ * @param {boolean} enabled - A boolean value to enable or disable delegation of messages to Google Play Services.
+ * @returns {Promise<void>}
+ */
+export function setNotificationDelegationEnabled(messaging, enabled) {
+  return messaging.setNotificationDelegationEnabled(enabled);
 }
 
 /**

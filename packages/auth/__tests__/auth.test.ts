@@ -2,6 +2,9 @@ import { afterAll, beforeAll, describe, expect, it, jest } from '@jest/globals';
 import { FirebaseAuthTypes } from '../lib/index';
 // @ts-ignore
 import User from '../lib/User';
+// @ts-ignore test
+import FirebaseModule from '../../app/lib/internal/FirebaseModule';
+
 import auth, {
   firebase,
   getAuth,
@@ -58,7 +61,20 @@ import auth, {
   verifyBeforeUpdateEmail,
   getAdditionalUserInfo,
   getCustomAuthDomain,
+  validatePassword,
+  AppleAuthProvider,
+  EmailAuthProvider,
+  FacebookAuthProvider,
+  GithubAuthProvider,
+  GoogleAuthProvider,
+  OAuthProvider,
+  OIDCAuthProvider,
+  PhoneAuthProvider,
+  PhoneMultiFactorGenerator,
+  TwitterAuthProvider,
 } from '../lib';
+
+const PasswordPolicyImpl = require('../lib/password-policy/PasswordPolicyImpl').default;
 
 // @ts-ignore test
 import FirebaseModule from '../../app/lib/internal/FirebaseModule';
@@ -121,13 +137,13 @@ describe('Auth', function () {
         const result = auth().useEmulator('http://my-host:9099');
         expect(result).toEqual(['my-host', 9099]);
       });
-    });
 
-    describe('tenantId', function () {
-      it('should be able to set tenantId ', function () {
-        const auth = firebase.app().auth();
-        auth.setTenantId('test-id').then(() => {
-          expect(auth.tenantId).toBe('test-id');
+      describe('tenantId', function () {
+        it('should be able to set tenantId ', function () {
+          const auth = firebase.app().auth();
+          auth.setTenantId('test-id').then(() => {
+            expect(auth.tenantId).toBe('test-id');
+          });
         });
       });
 
@@ -187,6 +203,84 @@ describe('Auth', function () {
         expect(actual.hints).toEqual(resolver.hints);
         // @ts-ignore We know actual is not null
         expect(actual._auth).not.toBeNull();
+      });
+    });
+
+    describe('ActionCodeSettings', function () {
+      beforeAll(function () {
+        // @ts-ignore test
+        jest.spyOn(FirebaseModule.prototype, 'native', 'get').mockImplementation(() => {
+          return new Proxy(
+            {},
+            {
+              get: () => jest.fn().mockResolvedValue({} as never),
+            },
+          );
+        });
+      });
+
+      it('should allow linkDomain as `ActionCodeSettings.linkDomain`', function () {
+        const auth = firebase.app().auth();
+        const actionCodeSettings: FirebaseAuthTypes.ActionCodeSettings = {
+          url: 'https://example.com',
+          handleCodeInApp: true,
+          linkDomain: 'example.com',
+        };
+        const email = 'fake@example.com';
+        auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        auth.sendPasswordResetEmail(email, actionCodeSettings);
+        sendPasswordResetEmail(auth, email, actionCodeSettings);
+        sendSignInLinkToEmail(auth, email, actionCodeSettings);
+
+        const user: FirebaseAuthTypes.User = new User(auth, {});
+
+        user.sendEmailVerification(actionCodeSettings);
+        user.verifyBeforeUpdateEmail(email, actionCodeSettings);
+        sendEmailVerification(user, actionCodeSettings);
+        verifyBeforeUpdateEmail(user, email, actionCodeSettings);
+      });
+
+      it('should warn using `ActionCodeSettings.dynamicLinkDomain`', function () {
+        const auth = firebase.app().auth();
+        const actionCodeSettings: FirebaseAuthTypes.ActionCodeSettings = {
+          url: 'https://example.com',
+          handleCodeInApp: true,
+          linkDomain: 'example.com',
+          dynamicLinkDomain: 'example.com',
+        };
+        const email = 'fake@example.com';
+        let warnings = 0;
+        const consoleWarnSpy = jest.spyOn(console, 'warn');
+        consoleWarnSpy.mockReset();
+        consoleWarnSpy.mockImplementation(warnMessage => {
+          if (
+            warnMessage.includes(
+              'Instead, use ActionCodeSettings.linkDomain to set up a custom domain',
+            )
+          ) {
+            warnings++;
+          }
+        });
+        auth.sendSignInLinkToEmail(email, actionCodeSettings);
+        expect(warnings).toBe(1);
+        auth.sendPasswordResetEmail(email, actionCodeSettings);
+        expect(warnings).toBe(2);
+        sendPasswordResetEmail(auth, email, actionCodeSettings);
+        expect(warnings).toBe(3);
+        sendSignInLinkToEmail(auth, email, actionCodeSettings);
+        expect(warnings).toBe(4);
+        const user: FirebaseAuthTypes.User = new User(auth, {});
+
+        user.sendEmailVerification(actionCodeSettings);
+        expect(warnings).toBe(5);
+        user.verifyBeforeUpdateEmail(email, actionCodeSettings);
+        expect(warnings).toBe(6);
+        sendEmailVerification(user, actionCodeSettings);
+        expect(warnings).toBe(7);
+        verifyBeforeUpdateEmail(user, email, actionCodeSettings);
+        expect(warnings).toBe(8);
+        consoleWarnSpy.mockReset();
+        consoleWarnSpy.mockRestore();
       });
     });
   });
@@ -408,81 +502,123 @@ describe('Auth', function () {
       expect(getCustomAuthDomain).toBeDefined();
     });
 
-    describe('ActionCodeSettings', function () {
-      beforeAll(function () {
-        // @ts-ignore test
-        jest.spyOn(FirebaseModule.prototype, 'native', 'get').mockImplementation(() => {
-          return new Proxy(
-            {},
-            {
-              get: () => jest.fn().mockResolvedValue({} as never),
-            },
-          );
-        });
+    it('`validatePassword` function is properly exposed to end user', function () {
+      expect(validatePassword).toBeDefined();
+    });
+
+    it('`AppleAuthProvider` class is properly exposed to end user', function () {
+      expect(AppleAuthProvider).toBeDefined();
+    });
+
+    it('`EmailAuthProvider` class is properly exposed to end user', function () {
+      expect(EmailAuthProvider).toBeDefined();
+    });
+
+    it('`FacebookAuthProvider` class is properly exposed to end user', function () {
+      expect(FacebookAuthProvider).toBeDefined();
+    });
+
+    it('`GithubAuthProvider` class is properly exposed to end user', function () {
+      expect(GithubAuthProvider).toBeDefined();
+    });
+
+    it('`GoogleAuthProvider` class is properly exposed to end user', function () {
+      expect(GoogleAuthProvider).toBeDefined();
+    });
+
+    it('`OAuthProvider` class is properly exposed to end user', function () {
+      expect(OAuthProvider).toBeDefined();
+    });
+
+    it('`OIDCProvider` class is properly exposed to end user', function () {
+      expect(OIDCAuthProvider).toBeDefined();
+    });
+
+    it('`PhoneAuthProvider` class is properly exposed to end user', function () {
+      expect(PhoneAuthProvider).toBeDefined();
+    });
+
+    it('`PhoneMultiFactorGenerator` class is properly exposed to end user', function () {
+      expect(PhoneMultiFactorGenerator).toBeDefined();
+    });
+
+    it('`TwitterAuthProvider` class is properly exposed to end user', function () {
+      expect(TwitterAuthProvider).toBeDefined();
+    });
+
+    describe('PasswordPolicyImpl', function () {
+      const TEST_MIN_PASSWORD_LENGTH = 6;
+      const TEST_SCHEMA_VERSION = 1;
+
+      const testPolicy = {
+        customStrengthOptions: {
+          minPasswordLength: 6,
+          maxPasswordLength: 4096,
+          containsLowercaseCharacter: true,
+          containsUppercaseCharacter: true,
+          containsNumericCharacter: true,
+          containsNonAlphanumericCharacter: true,
+        },
+        allowedNonAlphanumericCharacters: ['$', '*'],
+        schemaVersion: 1,
+        enforcementState: 'OFF',
+      };
+
+      it('should create a password policy', async () => {
+        let passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        expect(passwordPolicy).toBeDefined();
+        expect(passwordPolicy.customStrengthOptions.minPasswordLength).toEqual(
+          TEST_MIN_PASSWORD_LENGTH,
+        );
+        expect(passwordPolicy.schemaVersion).toEqual(TEST_SCHEMA_VERSION);
       });
 
-      it('should allow linkDomain as `ActionCodeSettings.linkDomain`', function () {
-        const auth = firebase.app().auth();
-        const actionCodeSettings: FirebaseAuthTypes.ActionCodeSettings = {
-          url: 'https://example.com',
-          handleCodeInApp: true,
-          linkDomain: 'example.com',
-        };
-        const email = 'fake@example.com';
-        auth.sendSignInLinkToEmail(email, actionCodeSettings);
-        auth.sendPasswordResetEmail(email, actionCodeSettings);
-        sendPasswordResetEmail(auth, email, actionCodeSettings);
-        sendSignInLinkToEmail(auth, email, actionCodeSettings);
-
-        const user: FirebaseAuthTypes.User = new User(auth, {});
-
-        user.sendEmailVerification(actionCodeSettings);
-        user.verifyBeforeUpdateEmail(email, actionCodeSettings);
-        sendEmailVerification(user, actionCodeSettings);
-        verifyBeforeUpdateEmail(user, email, actionCodeSettings);
+      it('should return statusValid: true when the password satisfies the password policy', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'Password$123';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(true);
       });
 
-      it('should warn using `ActionCodeSettings.dynamicLinkDomain`', function () {
-        const auth = firebase.app().auth();
-        const actionCodeSettings: FirebaseAuthTypes.ActionCodeSettings = {
-          url: 'https://example.com',
-          handleCodeInApp: true,
-          linkDomain: 'example.com',
-          dynamicLinkDomain: 'example.com',
-        };
-        const email = 'fake@example.com';
-        let warnings = 0;
-        const consoleWarnSpy = jest.spyOn(console, 'warn');
-        consoleWarnSpy.mockReset();
-        consoleWarnSpy.mockImplementation(warnMessage => {
-          if (
-            warnMessage.includes(
-              'Instead, use ActionCodeSettings.linkDomain to set up a custom domain',
-            )
-          ) {
-            warnings++;
-          }
-        });
-        auth.sendSignInLinkToEmail(email, actionCodeSettings);
-        expect(warnings).toBe(1);
-        auth.sendPasswordResetEmail(email, actionCodeSettings);
-        expect(warnings).toBe(2);
-        sendPasswordResetEmail(auth, email, actionCodeSettings);
-        expect(warnings).toBe(3);
-        sendSignInLinkToEmail(auth, email, actionCodeSettings);
-        expect(warnings).toBe(4);
-        const user: FirebaseAuthTypes.User = new User(auth, {});
+      it('should return statusValid: false when the password is too short', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'Pa1$';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(false);
+      });
 
-        user.sendEmailVerification(actionCodeSettings);
-        expect(warnings).toBe(5);
-        user.verifyBeforeUpdateEmail(email, actionCodeSettings);
-        expect(warnings).toBe(6);
-        sendEmailVerification(user, actionCodeSettings);
-        expect(warnings).toBe(7);
-        verifyBeforeUpdateEmail(user, email, actionCodeSettings);
-        expect(warnings).toBe(8);
-        consoleWarnSpy.mockReset();
-        consoleWarnSpy.mockRestore();
+      it('should return statusValid: false when the password has no capital characters', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'password123$';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(false);
+      });
+
+      it('should return statusValid: false when the password has no lowercase characters', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'PASSWORD123$';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(false);
+      });
+
+      it('should return statusValid: false when the password has no numbers', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'Password$';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(false);
+      });
+
+      it('should return statusValid: false when the password has no special characters', async () => {
+        const passwordPolicy = new PasswordPolicyImpl(testPolicy);
+        let password = 'Password123';
+        let status = passwordPolicy.validatePassword(password);
+        expect(status).toBeDefined();
+        expect(status.isValid).toEqual(false);
       });
     });
   });

@@ -77,6 +77,7 @@ FirebaseApp
 FirebaseCore
 firestore
 Firestore
+freeform
 GDPR
 GDPR-compliant
 getIdToken
@@ -187,6 +188,7 @@ signInTester
 Siri
 SMS
 SNS
+SPII
 src
 SSV
 stacktrace
@@ -197,6 +199,7 @@ thenable
 ThreadPoolExecutor
 timezones
 triaging
+TurboModule
 TurboModules
 TypeDoc
 UI
@@ -212,6 +215,7 @@ uri-scheme
 userData
 utils
 Utils
+v1
 v15
 v5
 v6
@@ -219,6 +223,7 @@ v7
 v9
 v22
 Ventura
+VertexAI
 VPN
 VSCode
 Wix

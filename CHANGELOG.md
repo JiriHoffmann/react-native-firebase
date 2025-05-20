@@ -3,6 +3,116 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [22.2.0](https://github.com/invertase/react-native-firebase/compare/v22.1.0...v22.2.0) (2025-05-12)
+
+### Features
+
+- **app-check:** add Swift AppDelegate support for Expo SDK53+ ([#8521](https://github.com/invertase/react-native-firebase/issues/8521)) ([8c631e1](https://github.com/invertase/react-native-firebase/commit/8c631e14375f97ec6ad7f72cf359b8f7a048479a))
+
+### Bug Fixes
+
+- **app-check, types:** modular exports of ReactNativeFirebaseAppCheckProvider types ([f08b687](https://github.com/invertase/react-native-firebase/commit/f08b687b4bf8acdd1cc5846ba5a32565cc2f4318))
+- **auth, expo:** lowercase `String?` in swift using `.lowercased()` ([af435e8](https://github.com/invertase/react-native-firebase/commit/af435e8b8bc84a98e4fab336ade6952178c7f6f8))
+- **auth:** missing PhoneMultiFactorGenerator export ([aaaec03](https://github.com/invertase/react-native-firebase/commit/aaaec03bba10c68d0f700b6c4b26a17c467f71bb))
+- **storage, types:** add missing type for StringFormat object values ([#8530](https://github.com/invertase/react-native-firebase/issues/8530)) ([4e75f57](https://github.com/invertase/react-native-firebase/commit/4e75f57dee763ae607c240e20299d3bb83fc2bda))
+
+## [22.1.0](https://github.com/invertase/react-native-firebase/compare/v22.0.0...v22.1.0) (2025-04-30)
+
+### Features
+
+- **auth, expo:** add support for AppDelegate.swift ([e4966ef](https://github.com/invertase/react-native-firebase/commit/e4966ef3b692b3b8a3b89fbf54a0a0d59ca06ab6))
+
+### Bug Fixes
+
+- **app, expo:** add config plugin support for Expo SDK 53 ([#8495](https://github.com/invertase/react-native-firebase/issues/8495)) ([7617611](https://github.com/invertase/react-native-firebase/commit/7617611fb7ba903d7a15b44bc34c930a354a863c))
+- **app, expo:** update config plugin to match Expo 53.0.1 AppDelegate ([#8500](https://github.com/invertase/react-native-firebase/issues/8500)) ([3d3c4ec](https://github.com/invertase/react-native-firebase/commit/3d3c4ece9f9a9de76e36f4f35611fca5ed208abc))
+- **app:** provide modular-like APIs for RNFB-specific json/meta/preferences methods ([9bb5365](https://github.com/invertase/react-native-firebase/commit/9bb536523869a21a26bd46756d0f42ee2ff34321))
+- **app:** toString() does not exist in modular API, use .name property ([2a99366](https://github.com/invertase/react-native-firebase/commit/2a99366ae56a36a6d4b3bdb7beca6137c4040e59))
+- **auth, android:** catch native error in signWithEmailLink ([a08580e](https://github.com/invertase/react-native-firebase/commit/a08580e29d672af99e890a60dbef8aba094b697c))
+- **auth:** delegate modular `multiFactor` to MultiFactorUser constructor ([0937c77](https://github.com/invertase/react-native-firebase/commit/0937c77c9642da082de34de39cbf6a1847ae065c))
+- **firestore, types:** exist -> exists() change reflected in types ([339834d](https://github.com/invertase/react-native-firebase/commit/339834d940f1260ddd9a142cc17def1e876ff0fa))
+- **messaging:** correctly pass options in modular getToken/deleteToken ([d29dfc8](https://github.com/invertase/react-native-firebase/commit/d29dfc8ee153c68cb9a1840c105061776403fe26))
+- **vertexai:** package.json main needs updating to commonjs path ([abe6c19](https://github.com/invertase/react-native-firebase/commit/abe6c190e6a22676fc58a4c5c7740ddeba2efd93))
+
+## [22.0.0](https://github.com/invertase/react-native-firebase/compare/v21.14.0...v22.0.0) (2025-04-25)
+
+### ⚠ BREAKING CHANGES
+
+- **firestore:** alter all use of DocumentSnapshot `exists` to `exists()` - should be a method not a property
+- **auth:** return type of auth isSignInWithEmailLink changed from `boolean` to `Promise<boolean>`
+- **app, sdks:** firebase-ios-sdk 11.12.0 requires Xcode 16.2+
+
+### Features
+
+- **app, sdks:** firebase-ios-sdk 11.12.0 / firebase-android-sdk 33.13.0 ([c63d843](https://github.com/invertase/react-native-firebase/commit/c63d8435b678742cfdd98f4d1d8895134cb9cf09))
+- **auth:** use native isSignInWithEmailLink - returns Promise<boolean> vs boolean ([#8450](https://github.com/invertase/react-native-firebase/issues/8450)) ([3785690](https://github.com/invertase/react-native-firebase/commit/37856901323d81ee8b232bfa0279b6606dbf366d))
+
+### Bug Fixes
+
+- **analytics:** Type defs ([#8363](https://github.com/invertase/react-native-firebase/issues/8363)) ([74efc84](https://github.com/invertase/react-native-firebase/commit/74efc848e3ecda47b5c7cdf79e5e72370cd10b7d))
+- **android:** use `=` assignment vs deprecated space-assignment ([39c2ecb](https://github.com/invertase/react-native-firebase/commit/39c2ecb0069a8a5a65b04fb7f86ccecf83273868))
+- **auth:** Make REVERSED_CLIENT_ID optional ([#8470](https://github.com/invertase/react-native-firebase/issues/8470)) ([a909d1b](https://github.com/invertase/react-native-firebase/commit/a909d1beb597dcb92035a2ee6e66995c3aee8a5a))
+- enable provenance signing during publish ([4535f0d](https://github.com/invertase/react-native-firebase/commit/4535f0d5756c89aeb8f8e772348c71d8176348be))
+- **firestore:** DocumentSnapshot.exists() should be a method not a property ([#8483](https://github.com/invertase/react-native-firebase/issues/8483)) ([346272c](https://github.com/invertase/react-native-firebase/commit/346272cf9d6545ab5c1a2c30127bc4079700c2d1))
+
+## [21.14.0](https://github.com/invertase/react-native-firebase/compare/v21.13.0...v21.14.0) (2025-04-14)
+
+### Features
+
+- **messaging, android:** notification delegation APIs, firebase.json feature toggle ([c0c5054](https://github.com/invertase/react-native-firebase/commit/c0c505432e95c85fa6621b548b24e755e2894c37))
+- **messaging, android:** support BigQuery export setting in firebase.json ([fa0e967](https://github.com/invertase/react-native-firebase/commit/fa0e967f9a06719c159a4980749f80c5ff2e2c39))
+
+### Bug Fixes
+
+- **app-check:** type def fixes ([#8367](https://github.com/invertase/react-native-firebase/issues/8367)) ([ecb1340](https://github.com/invertase/react-native-firebase/commit/ecb134086c685c8ac337cdc252a2298465633dab))
+- **app, expo:** update iOS AppDelegate for SDK 53 support ([a3d82c7](https://github.com/invertase/react-native-firebase/commit/a3d82c73e746fe3d2ac4513b15696ced98ecf2ca))
+- **app:** annotate initializeApp return as a promise ([#8366](https://github.com/invertase/react-native-firebase/issues/8366)) ([5189c32](https://github.com/invertase/react-native-firebase/commit/5189c328e2643cdaf9c96059ce139b34c7651466))
+- **app:** firebase-ios-sdk 11.11.0 / firebase-android-sdk 33.12.0 ([1bfd3eb](https://github.com/invertase/react-native-firebase/commit/1bfd3eb5558296deff7a368a607163019b1d4d11))
+- **auth:** correct modular AuthListenerCallback type ([#8436](https://github.com/invertase/react-native-firebase/issues/8436)) ([d94a2d8](https://github.com/invertase/react-native-firebase/commit/d94a2d8e3786b69eb43d18eb0f329e5492ceaeb1))
+
+## [21.13.0](https://github.com/invertase/react-native-firebase/compare/v21.12.3...v21.13.0) (2025-03-31)
+
+### Features
+
+- **auth:** validatePassword method implementation ([#8400](https://github.com/invertase/react-native-firebase/issues/8400)) ([1ec33f5](https://github.com/invertase/react-native-firebase/commit/1ec33f5020664fe32aa8132a170a83ec865aa95d))
+
+### Bug Fixes
+
+- **database:** improve type definitions ([#8373](https://github.com/invertase/react-native-firebase/issues/8373)) ([95050c0](https://github.com/invertase/react-native-firebase/commit/95050c05ca88a7e22a9a55302f80240d1401bda8))
+- **firestore:** a single or/and filter is allowed, 2+ not required ([2308183](https://github.com/invertase/react-native-firebase/commit/23081838321d4c8f0548461917c52a0c00bdc96e))
+
+## [21.12.3](https://github.com/invertase/react-native-firebase/compare/v21.12.2...v21.12.3) (2025-03-26)
+
+### Bug Fixes
+
+- **crashlytics): Revert "fix(crashlytics:** convert internal API usage to modular" ([4f7fb2e](https://github.com/invertase/react-native-firebase/commit/4f7fb2e383a803de6963dbd01cf2c623e431d1da))
+- **crashlytics:** disable deprecation warnings for analytics in crashlytics ([b600a20](https://github.com/invertase/react-native-firebase/commit/b600a2099c2076689510193b74ac29c057d27d2a))
+
+## [21.12.2](https://github.com/invertase/react-native-firebase/compare/v21.12.1...v21.12.2) (2025-03-23)
+
+### Bug Fixes
+
+- **auth:** Fix auth type definitions and add more ([#8323](https://github.com/invertase/react-native-firebase/issues/8323)) ([3dc8119](https://github.com/invertase/react-native-firebase/commit/3dc81195219a38b22294bec4490d4192c9d94fce))
+
+## [21.12.1](https://github.com/invertase/react-native-firebase/compare/v21.12.0...v21.12.1) (2025-03-22)
+
+### Bug Fixes
+
+- **android:** adopt firebase-android-sdk 33.11.0 ([8271231](https://github.com/invertase/react-native-firebase/commit/82712317f9df94f5b5d2d9610f2029c3df0ed96b))
+- **app, sdks:** firebase-ios-sdk 11.9.0 / firebase-android-sdk 33.10.0 ([df24ed6](https://github.com/invertase/react-native-firebase/commit/df24ed63e5434c84dc167f23287446647457e8e5))
+- **app:** App type def fix ([#8365](https://github.com/invertase/react-native-firebase/issues/8365)) ([068a924](https://github.com/invertase/react-native-firebase/commit/068a92496f54e30cd17187c849163dbafd9e8c5b))
+- **database:** define increment in modular API ([#8377](https://github.com/invertase/react-native-firebase/issues/8377)) ([e13598b](https://github.com/invertase/react-native-firebase/commit/e13598bcb0d3612c6adddd2a684af2ae6a3fa9d3))
+- **firestore, ios:** use correct key to cache instance ([#8404](https://github.com/invertase/react-native-firebase/issues/8404)) ([e6642ec](https://github.com/invertase/react-native-firebase/commit/e6642ec51e7e7771611c1c7e36aa6bdeeb4989c9))
+- **ios:** adopt firebase-ios-sdk 11.10.0 ([ffc7b4c](https://github.com/invertase/react-native-firebase/commit/ffc7b4c7d603dcb27b730f82c523c91b4a5882a8))
+- **performance:** initializePerformance settings param is optional ([#8385](https://github.com/invertase/react-native-firebase/issues/8385)) ([d9b7175](https://github.com/invertase/react-native-firebase/commit/d9b7175983f0e7b86747c88fcb522295bedf203b))
+- **storage:** Type defs storage ([#8387](https://github.com/invertase/react-native-firebase/issues/8387)) ([12ddc18](https://github.com/invertase/react-native-firebase/commit/12ddc18205a763913a45b2b6962276f80f022f4c))
+
+## [21.12.0](https://github.com/invertase/react-native-firebase/compare/v21.11.0...v21.12.0) (2025-03-03)
+
+### Features
+
+- vertexAI package support ([#8236](https://github.com/invertase/react-native-firebase/issues/8236)) ([a1d1361](https://github.com/invertase/react-native-firebase/commit/a1d13610f443a96a7195b3f769f77d9676c0e577))
+
 ## [21.11.0](https://github.com/invertase/react-native-firebase/compare/v21.10.1...v21.11.0) (2025-02-20)
 
 ### Features
