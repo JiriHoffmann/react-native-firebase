@@ -131,15 +131,15 @@ firebase
   .collection('foo')
   .orderBy('foo')
   .withConverter<{ foo: number }>({
-    toFirestore(data) {
+    toFirestore(data: { foo: number }) {
       return {
         foo: (data.foo ?? 0) + 1,
         bar: 'baz',
       };
     },
-    fromFirestore(snapshot) {
+    fromFirestore(snapshot: FirebaseFirestoreTypes.DocumentSnapshot) {
       return {
-        foo: snapshot.data().foo + 1,
+        foo: snapshot.data()?.foo + 1,
         bar: 'baz',
       };
     },
@@ -150,21 +150,21 @@ firebase
   .collection('foo')
   .orderBy('foo')
   .withConverter<{ foo: number }>({
-    toFirestore(data) {
+    toFirestore(data: { foo: number }) {
       return {
         foo: (data.foo ?? 0) + 1,
         bar: 'baz',
       };
     },
-    fromFirestore(snapshot) {
+    fromFirestore(snapshot: FirebaseFirestoreTypes.DocumentSnapshot) {
       return {
-        foo: snapshot.data().foo + 1,
+        foo: snapshot.data()?.foo + 1,
         bar: 'baz',
       };
     },
   })
   .get()
-  .then(snapshot => {
+  .then((snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
     console.log(snapshot.docs[0].data().foo);
   });
 
@@ -172,15 +172,15 @@ firebase
   .firestore()
   .doc('foo/bar')
   .withConverter<{ foo: number }>({
-    toFirestore(data) {
+    toFirestore(data: { foo: number }) {
       return {
         foo: (data.foo ?? 0) + 1,
         bar: 'baz',
       };
     },
-    fromFirestore(snapshot) {
+    fromFirestore(snapshot: FirebaseFirestoreTypes.DocumentSnapshot) {
       return {
-        foo: snapshot.data().foo + 1,
+        foo: snapshot.data()?.foo + 1,
         bar: 'baz',
       };
     },
@@ -190,22 +190,22 @@ firebase
   .firestore()
   .doc('foo/bar')
   .withConverter<{ foo: number }>({
-    toFirestore(data) {
+    toFirestore(data: { foo: number }) {
       return {
         foo: (data.foo ?? 0) + 1,
         bar: 'baz',
       };
     },
-    fromFirestore(snapshot) {
+    fromFirestore(snapshot: FirebaseFirestoreTypes.DocumentSnapshot) {
       return {
-        foo: snapshot.data().foo + 1,
+        foo: snapshot.data()?.foo + 1,
         bar: 'baz',
       };
     },
   })
   .get()
-  .then(snapshot => {
-    console.log(snapshot.data()!.foo);
+  .then((snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
+    console.log(snapshot.data()?.foo);
   });
 collection(firebase.firestore(), 'foo');
 collection(firebase.firestore(), 'foo', 'foo', 'foo');

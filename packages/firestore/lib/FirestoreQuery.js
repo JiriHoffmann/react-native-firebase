@@ -35,7 +35,7 @@ import { _Filter, generateFilters } from './FirestoreFilter';
 let _id = 0;
 
 export default class FirestoreQuery {
-  constructor(firestore, collectionPath, modifiers, queryName) {
+  constructor(firestore, collectionPath, modifiers, queryName, converter) {
     this._firestore = firestore;
     this._collectionPath = collectionPath;
     this._modifiers = modifiers;
