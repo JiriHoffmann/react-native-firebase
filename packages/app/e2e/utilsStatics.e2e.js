@@ -16,10 +16,12 @@
  */
 
 describe('utils()', function () {
+  if (Platform.other) return; // Not supported on non-native platforms.
+
   describe('statics', function () {
     it('provides native path strings', function () {
       firebase.utils.FilePath.should.be.an.Object();
-      if (device.getPlatform() === 'ios') {
+      if (Platform.ios) {
         firebase.utils.FilePath.MAIN_BUNDLE.should.be.a.String();
       } else {
         should.equal(firebase.utils.FilePath.MAIN_BUNDLE, null);
@@ -28,11 +30,17 @@ describe('utils()', function () {
       firebase.utils.FilePath.CACHES_DIRECTORY.should.be.a.String();
       firebase.utils.FilePath.DOCUMENT_DIRECTORY.should.be.a.String();
 
-      if (device.getPlatform() === 'android') {
+      // Even on android it may be null, skip if so
+      if (Platform.android && firebase.utils.FilePath.EXTERNAL_DIRECTORY !== null) {
         firebase.utils.FilePath.EXTERNAL_DIRECTORY.should.be.a.String();
-        firebase.utils.FilePath.EXTERNAL_STORAGE_DIRECTORY.should.be.a.String();
       } else {
         should.equal(firebase.utils.FilePath.EXTERNAL_DIRECTORY, null);
+      }
+
+      // Even on android it may be null, skip if so
+      if (Platform.android && firebase.utils.FilePath.EXTERNAL_STORAGE_DIRECTORY !== null) {
+        firebase.utils.FilePath.EXTERNAL_STORAGE_DIRECTORY.should.be.a.String();
+      } else {
         should.equal(firebase.utils.FilePath.EXTERNAL_STORAGE_DIRECTORY, null);
       }
 

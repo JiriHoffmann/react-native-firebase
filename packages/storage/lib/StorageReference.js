@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /*
  * Copyright (c) 2016-present Invertase Limited & Contributors
  *
@@ -33,7 +32,7 @@ import {
 } from '@react-native-firebase/app/lib/common';
 import StorageDownloadTask from './StorageDownloadTask';
 import StorageListResult, { provideStorageReferenceClass } from './StorageListResult';
-import StorageStatics from './StorageStatics';
+import { StringFormat } from './StorageStatics';
 import StorageUploadTask from './StorageUploadTask';
 import { validateMetadata } from './utils';
 
@@ -179,12 +178,12 @@ export default class StorageReference extends ReferenceBase {
    */
   put(data, metadata) {
     if (!isUndefined(metadata)) {
-      validateMetadata(metadata);
+      validateMetadata(metadata, false);
     }
 
     return new StorageUploadTask(this, task =>
       Base64.fromData(data).then(({ string, format }) => {
-        const { _string, _format, _metadata } = this._updateString(string, format, metadata);
+        const { _string, _format, _metadata } = this._updateString(string, format, metadata, false);
         return this._storage.native.putString(
           this.toString(),
           _string,
@@ -199,8 +198,8 @@ export default class StorageReference extends ReferenceBase {
   /**
    * @url https://firebase.google.com/docs/reference/js/firebase.storage.Reference#putString
    */
-  putString(string, format = StorageStatics.StringFormat.RAW, metadata) {
-    const { _string, _format, _metadata } = this._updateString(string, format, metadata);
+  putString(string, format = StringFormat.RAW, metadata) {
+    const { _string, _format, _metadata } = this._updateString(string, format, metadata, false);
 
     return new StorageUploadTask(this, task =>
       this._storage.native.putString(this.toString(), _string, _format, _metadata, task._id),
@@ -250,7 +249,7 @@ export default class StorageReference extends ReferenceBase {
    */
   putFile(filePath, metadata) {
     if (!isUndefined(metadata)) {
-      validateMetadata(metadata);
+      validateMetadata(metadata, false);
     }
 
     if (!isString(filePath)) {
@@ -264,33 +263,33 @@ export default class StorageReference extends ReferenceBase {
     );
   }
 
-  _updateString(string, format, metadata) {
+  _updateString(string, format, metadata, update = false) {
     if (!isString(string)) {
       throw new Error(
         "firebase.storage.StorageReference.putString(*, _, _) 'string' expects a string value.",
       );
     }
 
-    if (!Object.values(StorageStatics.StringFormat).includes(format)) {
+    if (!Object.values(StringFormat).includes(format)) {
       throw new Error(
         `firebase.storage.StorageReference.putString(_, *, _) 'format' provided is invalid, must be one of ${Object.values(
-          StorageStatics.StringFormat,
+          StringFormat,
         ).join(',')}.`,
       );
     }
 
     if (!isUndefined(metadata)) {
-      validateMetadata(metadata);
+      validateMetadata(metadata, update);
     }
 
     let _string = string;
     let _format = format;
     let _metadata = metadata;
 
-    if (format === StorageStatics.StringFormat.RAW) {
+    if (format === StringFormat.RAW) {
       _string = Base64.btoa(_string);
-      _format = StorageStatics.StringFormat.BASE64;
-    } else if (format === StorageStatics.StringFormat.DATA_URL) {
+      _format = StringFormat.BASE64;
+    } else if (format === StringFormat.DATA_URL) {
       const { mediaType, base64String } = getDataUrlParts(_string);
       if (isUndefined(base64String)) {
         throw new Error(
@@ -304,7 +303,7 @@ export default class StorageReference extends ReferenceBase {
         }
         _metadata.contentType = mediaType;
         _string = base64String;
-        _format = StorageStatics.StringFormat.BASE64;
+        _format = StringFormat.BASE64;
       }
     }
     return { _string, _metadata, _format };

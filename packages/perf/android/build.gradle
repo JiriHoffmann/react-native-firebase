@@ -1,3 +1,4 @@
+/* groovylint-disable DuplicateStringLiteral */
 import io.invertase.gradle.common.PackageJson
 
 buildscript {
@@ -7,11 +8,11 @@ buildscript {
   if (project == rootProject) {
     repositories {
       google()
-      jcenter()
+      mavenCentral()
     }
 
     dependencies {
-      classpath("com.android.tools.build:gradle:4.1.3")
+      classpath("com.android.tools.build:gradle:8.4.0")
     }
   }
 }
@@ -34,7 +35,6 @@ def firebaseBomVersion = appPackageJson['sdkVersions']['android']['firebase']
 def jsonMinSdk = appPackageJson['sdkVersions']['android']['minSdk']
 def jsonTargetSdk = appPackageJson['sdkVersions']['android']['targetSdk']
 def jsonCompileSdk = appPackageJson['sdkVersions']['android']['compileSdk']
-def jsonBuildTools = appPackageJson['sdkVersions']['android']['buildTools']
 def coreVersionDetected = appPackageJson['version']
 def coreVersionRequired = packageJson['peerDependencies'][appPackageJson['name']]
 // Only log after build completed so log warning appears at the end
@@ -51,9 +51,6 @@ project.ext {
         minSdk    : jsonMinSdk,
         targetSdk : jsonTargetSdk,
         compileSdk: jsonCompileSdk,
-        // optional as gradle.buildTools comes with one by default
-        // overriding here though to match the version RN uses
-        buildTools: jsonBuildTools
       ],
 
       firebase: [
@@ -63,31 +60,65 @@ project.ext {
   ])
 }
 
-apply from: file("./../../app/android/firebase-json.gradle")
+apply from: file('./../../app/android/firebase-json.gradle')
 
-def autoCollectionEnabled = "true"
+String collectionDeactivated = 'false'
+
+// If nothing is defined, data collection defaults to true
+String dataCollectionEnabled = 'true'
 
 if (rootProject.ext && rootProject.ext.firebaseJson) {
-  if (rootProject.ext.firebaseJson.isFlagEnabled("perf_auto_collection_enabled", true) == false) {
-    autoCollectionEnabled = "false"
+  /* groovylint-disable-next-line NoDef, VariableTypeRequired */
+  def rnfbConfig = rootProject.ext.firebaseJson
+  // If the SDK-wide data collection flag is defined and false, our default flips to false
+  if (rnfbConfig.isFlagEnabled('app_data_collection_default_enabled', true) == false) {
+    dataCollectionEnabled = 'false'
+  }
+  // If our specific collection flag is defined, it's status takes precedence
+  if (rnfbConfig.isDefined('perf_auto_collection_enabled')) {
+    if (rnfbConfig.isFlagEnabled('perf_auto_collection_enabled', true)) {
+      dataCollectionEnabled = 'true'
+    } else {
+      dataCollectionEnabled = 'false'
+    }
+  }
+
+  if (rnfbConfig.isFlagEnabled('perf_collection_deactivated', false)) {
+    collectionDeactivated = 'true'
   }
 }
 
 android {
+  def agpVersion = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0].toInteger()
+  if (agpVersion >= 7) {
+    namespace = 'io.invertase.firebase.perf'
+  }
+
   defaultConfig {
-    multiDexEnabled true
+    multiDexEnabled = true
     manifestPlaceholders = [
-      firebaseJsonAutoCollectionEnabled: autoCollectionEnabled
+      firebaseJsonAutoCollectionEnabled: dataCollectionEnabled,
+      firebaseJsonCollectionDeactivated: collectionDeactivated
     ]
   }
+
+  buildFeatures {
+    // AGP 8 no longer builds config by default
+    buildConfig = true
+  }
+
   lintOptions {
     disable 'GradleCompatible'
-    abortOnError false
+    abortOnError = false
   }
-  compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+
+  if (agpVersion < 8) {
+    compileOptions {
+      sourceCompatibility = JavaVersion.VERSION_11
+      targetCompatibility = JavaVersion.VERSION_11
+    }
   }
+
   sourceSets {
     main {
       java.srcDirs = ['src/main/java', 'src/reactnative/java']
@@ -97,7 +128,7 @@ android {
 
 repositories {
   google()
-  jcenter()
+  mavenCentral()
 }
 
 dependencies {

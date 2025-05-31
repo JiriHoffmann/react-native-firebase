@@ -15,10 +15,21 @@
  *
  */
 
-import { isNull, isObject, isString, isUndefined } from '@react-native-firebase/app/lib/common';
+import {
+  isIOS,
+  isOther,
+  isNull,
+  warnIfNotModularCall,
+  isObject,
+  isFunction,
+  isString,
+  isUndefined,
+} from '@react-native-firebase/app/lib/common';
 import FirebaseApp from '../../FirebaseApp';
 import { DEFAULT_APP_NAME } from '../constants';
+import { setReactNativeAsyncStorageInternal } from '../asyncStorage';
 import { getAppModule } from './nativeModule';
+import { setLogLevelInternal } from '../logger';
 
 const APP_REGISTRY = {};
 let onAppCreateFn = null;
@@ -75,6 +86,7 @@ export function initializeNativeApps() {
  * @param name
  */
 export function getApp(name = DEFAULT_APP_NAME) {
+  warnIfNotModularCall(arguments, 'getApp()');
   if (!initializedNativeApps) {
     initializeNativeApps();
   }
@@ -91,6 +103,7 @@ export function getApp(name = DEFAULT_APP_NAME) {
  * Gets all app instances, used for `firebase.apps`
  */
 export function getApps() {
+  warnIfNotModularCall(arguments, 'getApps()');
   if (!initializedNativeApps) {
     initializeNativeApps();
   }
@@ -103,6 +116,7 @@ export function getApps() {
  * @param configOrName
  */
 export function initializeApp(options = {}, configOrName) {
+  warnIfNotModularCall(arguments, 'initializeApp()');
   let appConfig = configOrName;
 
   if (!isObject(configOrName) || isNull(configOrName)) {
@@ -165,7 +179,7 @@ export function initializeApp(options = {}, configOrName) {
     );
   }
 
-  const app = new FirebaseApp(options, { name }, false, deleteApp.bind(null, name, true));
+  const app = new FirebaseApp(options, appConfig, false, deleteApp.bind(null, name, true));
 
   // Note these initialization actions with side effects are performed prior to knowledge of
   // successful initialization in the native code. Native code *may* throw an error.
@@ -173,7 +187,7 @@ export function initializeApp(options = {}, configOrName) {
   onAppCreateFn(APP_REGISTRY[name]);
 
   return getAppModule()
-    .initializeApp(options, { name })
+    .initializeApp(options, appConfig)
     .then(() => {
       app._initialized = true;
       return app;
@@ -190,6 +204,41 @@ export function initializeApp(options = {}, configOrName) {
     });
 }
 
+export function setLogLevel(logLevel) {
+  warnIfNotModularCall(arguments, 'setLogLevel()');
+  if (!['error', 'warn', 'info', 'debug', 'verbose'].includes(logLevel)) {
+    throw new Error('LogLevel must be one of "error", "warn", "info", "debug", "verbose"');
+  }
+  // This is setting LogLevel for VertexAI which does not wrap around native SDK
+  setLogLevelInternal(logLevel);
+
+  if (isIOS || isOther) {
+    getAppModule().setLogLevel(logLevel);
+  }
+}
+
+export function setReactNativeAsyncStorage(asyncStorage) {
+  warnIfNotModularCall(arguments, 'setReactNativeAsyncStorage()');
+
+  if (!isObject(asyncStorage)) {
+    throw new Error("setReactNativeAsyncStorage(*) 'asyncStorage' must be an object.");
+  }
+
+  if (!isFunction(asyncStorage.setItem)) {
+    throw new Error("setReactNativeAsyncStorage(*) 'asyncStorage.setItem' must be a function.");
+  }
+
+  if (!isFunction(asyncStorage.getItem)) {
+    throw new Error("setReactNativeAsyncStorage(*) 'asyncStorage.getItem' must be a function.");
+  }
+
+  if (!isFunction(asyncStorage.removeItem)) {
+    throw new Error("setReactNativeAsyncStorage(*) 'asyncStorage.removeItem' must be a function.");
+  }
+
+  setReactNativeAsyncStorageInternal(asyncStorage);
+}
+
 /**
  *
  */
@@ -199,6 +248,10 @@ export function deleteApp(name, nativeInitialized) {
   }
 
   const app = APP_REGISTRY[name];
+
+  if (app === undefined) {
+    throw new Error(`Firebase App named '${name}' already deleted`);
+  }
 
   const nativeModule = getAppModule();
 

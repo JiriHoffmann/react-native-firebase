@@ -15,16 +15,18 @@
  *
  */
 
-import { isBoolean, isNumber, isString } from '@react-native-firebase/app/lib/common';
+import { isAndroid, isBoolean, isNumber, isString } from '@react-native-firebase/app/lib/common';
 import {
   createModuleNamespace,
   FirebaseModule,
   getFirebaseRoot,
 } from '@react-native-firebase/app/lib/internal';
+import { setReactNativeModule } from '@react-native-firebase/app/lib/internal/nativeModule';
 import DatabaseReference from './DatabaseReference';
 import DatabaseStatics from './DatabaseStatics';
 import DatabaseTransaction from './DatabaseTransaction';
 import version from './version';
+import fallBackModule from './web/RNFBDatabaseModule';
 
 const namespace = 'database';
 
@@ -180,6 +182,34 @@ class FirebaseDatabaseModule extends FirebaseModule {
 
     return this.native.setPersistenceCacheSizeBytes(bytes);
   }
+
+  useEmulator(host, port) {
+    if (!host || !isString(host) || !port || !isNumber(port)) {
+      throw new Error('firebase.database().useEmulator() takes a non-empty host and port');
+    }
+    let _host = host;
+    const androidBypassEmulatorUrlRemap =
+      typeof this.firebaseJson.android_bypass_emulator_url_remap === 'boolean' &&
+      this.firebaseJson.android_bypass_emulator_url_remap;
+    if (!androidBypassEmulatorUrlRemap && isAndroid && _host) {
+      if (_host.startsWith('localhost')) {
+        _host = _host.replace('localhost', '10.0.2.2');
+        // eslint-disable-next-line no-console
+        console.log(
+          'Mapping database host "localhost" to "10.0.2.2" for android emulators. Use real IP on real devices. You can bypass this behaviour with "android_bypass_emulator_url_remap" flag.',
+        );
+      }
+      if (_host.startsWith('127.0.0.1')) {
+        _host = _host.replace('127.0.0.1', '10.0.2.2');
+        // eslint-disable-next-line no-console
+        console.log(
+          'Mapping database host "127.0.0.1" to "10.0.2.2" for android emulators. Use real IP on real devices. You can bypass this behaviour with "android_bypass_emulator_url_remap" flag.',
+        );
+      }
+    }
+    this.native.useEmulator(_host, port);
+    return [_host, port]; // undocumented return, just used to unit test android host remapping
+  }
 }
 
 // import { SDK_VERSION } from '@react-native-firebase/database';
@@ -198,7 +228,13 @@ export default createModuleNamespace({
   ModuleClass: FirebaseDatabaseModule,
 });
 
+export * from './modular';
+
 // import database, { firebase } from '@react-native-firebase/database';
 // database().X(...);
 // firebase.database().X(...);
 export const firebase = getFirebaseRoot();
+
+for (let i = 0; i < nativeModuleName.length; i++) {
+  setReactNativeModule(nativeModuleName[i], fallBackModule);
+}

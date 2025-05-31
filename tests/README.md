@@ -6,9 +6,9 @@ Our tests are powered by [Jet ✈️](https://github.com/invertase/jet).
 
 ## Requirements
 
-- Make sure you have Xcode installed (tested with Xcode 10+).
-- Make sure you have Node.js installed (version 8.4.0 and above is required).
-- Make sure you have all required dependencies installed:
+- Make sure you have Xcode installed (tested with Xcode 15+) to develop iOS items
+- Make sure you have Node.js installed with yarn installed globally (node version 18 and 20 tested, `npm install --global yarn`).
+- Make sure you have all required iOS dependencies installed:
 
   - [Apple Sim Utils](https://github.com/wix/AppleSimulatorUtils):
 
@@ -36,7 +36,8 @@ yarn build:all:clean
 
 ```bash
 yarn
-yarn tests:ios:pod:install
+yarn lerna:prepare
+yarn tests:ios:pod:install  # for iOS development
 ```
 
 ---
@@ -66,7 +67,8 @@ As always; the first build for each platform will take a while. Subsequent build
 #### Android
 
 ```bash
-yarn tests:android:build
+yarn tests:android:build # If on linuxu or macOS, or...
+yarn tests:android:build:windows # If you are on windows
 ```
 
 #### iOS
@@ -87,7 +89,8 @@ With iOS Detox will start a simulator for you by default or run tests in an open
 For the Firestore emulator you need to install the tools and start the emulator:
 
 ```bash
-yarn tests:emulator:start
+yarn tests:emulator:start # for linux/macOS-hosted development, or...
+yarn tests:emulator:start:windows # if developing on windows
 ```
 
 ---
@@ -136,7 +139,7 @@ Another way to do this is via adding a `--grep` option to `e2e/mocha.opts` file,
 
 > 💡 Don't forget to remove these before committing your code and submitting a pull request
 
-For more Mocha options see https://mochajs.org/#usage
+For more Mocha options see <https://mochajs.org/#usage>
 
 ---
 
@@ -176,7 +179,7 @@ Ensure the following exists as a debugging option.
 ---
 
 <p>
-  <img align="left" width="75px" src="https://static.invertase.io/assets/invertase-logo-small.png">
+  <img align="left" width="75px" src="https://static.invertase.io/assets/invertase/invertase-rounded.png">
   <p align="left">
     Built and maintained with 💛 by <a href="https://invertase.io">Invertase</a>.
   </p>

@@ -1,21 +1,19 @@
 package io.invertase.firebase.messaging;
 
-import com.facebook.react.bridge.WritableMap;
-import com.google.firebase.messaging.RemoteMessage;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import io.invertase.firebase.common.UniversalFirebasePreferences;
-
 import static io.invertase.firebase.messaging.JsonConvert.jsonToReact;
 import static io.invertase.firebase.messaging.JsonConvert.reactToJSON;
 import static io.invertase.firebase.messaging.ReactNativeFirebaseMessagingSerializer.remoteMessageFromReadableMap;
 import static io.invertase.firebase.messaging.ReactNativeFirebaseMessagingSerializer.remoteMessageToWritableMap;
+
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
+import com.google.firebase.messaging.RemoteMessage;
+import io.invertase.firebase.common.UniversalFirebasePreferences;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class ReactNativeFirebaseMessagingStoreImpl implements ReactNativeFirebaseMessagingStore {
 
@@ -26,8 +24,9 @@ public class ReactNativeFirebaseMessagingStoreImpl implements ReactNativeFirebas
   @Override
   public void storeFirebaseMessage(RemoteMessage remoteMessage) {
     try {
-      String remoteMessageString = reactToJSON(remoteMessageToWritableMap(remoteMessage)).toString();
-//      Log.d("storeFirebaseMessage", remoteMessageString);
+      String remoteMessageString =
+          reactToJSON(remoteMessageToWritableMap(remoteMessage)).toString();
+      //      Log.d("storeFirebaseMessage", remoteMessageString);
       UniversalFirebasePreferences preferences = UniversalFirebasePreferences.getSharedInstance();
       preferences.setStringValue(remoteMessage.getMessageId(), remoteMessageString);
       // save new notification id
@@ -47,15 +46,26 @@ public class ReactNativeFirebaseMessagingStoreImpl implements ReactNativeFirebas
     }
   }
 
+  @Deprecated
   @Override
   public RemoteMessage getFirebaseMessage(String remoteMessageId) {
-    String remoteMessageString = UniversalFirebasePreferences.getSharedInstance().getStringValue(remoteMessageId, null);
+    ReadableMap messageMap = getFirebaseMessageMap(remoteMessageId);
+    if (messageMap != null) {
+      return remoteMessageFromReadableMap(messageMap);
+    }
+    return null;
+  }
+
+  @Override
+  public WritableMap getFirebaseMessageMap(String remoteMessageId) {
+    String remoteMessageString =
+        UniversalFirebasePreferences.getSharedInstance().getStringValue(remoteMessageId, null);
     if (remoteMessageString != null) {
-//      Log.d("getFirebaseMessage", remoteMessageString);
+      //      Log.d("getFirebaseMessage", remoteMessageString);
       try {
-        WritableMap readableMap = jsonToReact(new JSONObject(remoteMessageString));
-        readableMap.putString("to", remoteMessageId);//fake to
-        return remoteMessageFromReadableMap(readableMap);
+        WritableMap remoteMessageMap = jsonToReact(new JSONObject(remoteMessageString));
+        remoteMessageMap.putString("to", remoteMessageId); // fake to
+        return remoteMessageMap;
       } catch (JSONException e) {
         e.printStackTrace();
       }
@@ -82,5 +92,4 @@ public class ReactNativeFirebaseMessagingStoreImpl implements ReactNativeFirebas
   private List<String> convertToArray(String string) {
     return new ArrayList<>(Arrays.asList(string.split(DELIMITER)));
   }
-
 }

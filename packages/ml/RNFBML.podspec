@@ -9,6 +9,10 @@ firebase_sdk_version = appPackage['sdkVersions']['ios']['firebase']
 if coreVersionDetected != coreVersionRequired
   Pod::UI.warn "NPM package '#{package['name']}' depends on '#{appPackage['name']}' v#{coreVersionRequired} but found v#{coreVersionDetected}, this might cause build issues or runtime crashes."
 end
+firebase_ios_target = appPackage['sdkVersions']['ios']['iosTarget']
+firebase_macos_target = appPackage['sdkVersions']['ios']['macosTarget']
+firebase_tvos_target = appPackage['sdkVersions']['ios']['tvosTarget']
+firebase_sdk_version = appPackage['sdkVersions']['ios']['firebase']
 
 Pod::Spec.new do |s|
   s.name                = "RNFBML"
@@ -22,7 +26,9 @@ Pod::Spec.new do |s|
   s.authors             = "Invertase Limited"
   s.source              = { :git => "https://github.com/invertase/react-native-firebase.git", :tag => "v#{s.version}" }
   s.social_media_url    = 'http://twitter.com/invertaseio'
-  s.ios.deployment_target = "10.0"
+  s.ios.deployment_target = firebase_ios_target
+  s.macos.deployment_target = firebase_macos_target
+  s.tvos.deployment_target = firebase_tvos_target
   s.source_files        = 'ios/**/*.{h,m}'
 
   # React Native dependencies
@@ -35,12 +41,13 @@ Pod::Spec.new do |s|
   end
 
   # Firebase dependencies
-  s.dependency          'Firebase/MLVision', firebase_sdk_version
+  # s.dependency          'Firebase/MLModelDownloader', firebase_sdk_version
 
   if defined?($RNFirebaseAsStaticFramework)
     Pod::UI.puts "#{s.name}: Using overridden static_framework value of '#{$RNFirebaseAsStaticFramework}'"
     s.static_framework = $RNFirebaseAsStaticFramework
   else
+    # raise "#{s.name}: Underlying Firebase/MLModelDownloader requires $RNFirebaseAsStaticFrameworks = true and !use_frameworks in your Podfile"
     s.static_framework = false
   end
 end

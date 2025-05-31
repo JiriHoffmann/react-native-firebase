@@ -18,9 +18,12 @@
 
 #import <Foundation/Foundation.h>
 
-@interface RNFBCrashlyticsNativeHelper : NSObject 
+@interface RNFBCrashlyticsNativeHelper : NSObject
 
 + (void)recordNativeError:(NSError *)error;
 
-@end
++ (void)log:(nonnull NSString *)msg;
 
++ (void)setCustomValue:(nullable id)value forKey:(nonnull NSString *)key;
+
+@end

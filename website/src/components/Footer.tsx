@@ -27,7 +27,7 @@ function Footer(): JSX.Element {
           <List
             items={[
               ['Repository', 'https://github.com/invertase/react-native-firebase'],
-              ['License', 'https://github.com/invertase/react-native-firebase/blob/master/LICENSE'],
+              ['License', 'https://github.com/invertase/react-native-firebase/blob/main/LICENSE'],
               ['Pull Requests', 'https://github.com/invertase/react-native-firebase/pulls'],
               [
                 'Contributors',
@@ -40,7 +40,7 @@ function Footer(): JSX.Element {
           <Heading>Find us on</Heading>
           <List
             items={[
-              ['Twitter', 'https://twitter.com/https://twitter.com/rnfirebase'],
+              ['Twitter', 'https://twitter.com/rnfirebase'],
               ['NPM', 'https://npmjs.com/package/react-native-firebase'],
               ['Discord', 'https://invertase.link/discord'],
               [
@@ -66,7 +66,7 @@ function Footer(): JSX.Element {
       </div>
       <div className="mx-auto flex flex-col items-center text-center mt-20">
         <img
-          src="https://static.invertase.io/assets/invertase-white.png"
+          src="https://static.invertase.io/assets/invertase/invertase-rounded.png"
           alt="Invertase Logo"
           className="w-8 h-8 mb-4"
         />

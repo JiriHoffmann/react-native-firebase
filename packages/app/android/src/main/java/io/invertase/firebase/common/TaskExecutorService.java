@@ -17,17 +17,16 @@ package io.invertase.firebase.common;
  *
  */
 
-import io.invertase.firebase.common.ReactNativeFirebaseJSON;
-
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionHandler;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.SynchronousQueue;
 
 public class TaskExecutorService {
   private static final String MAXIMUM_POOL_SIZE_KEY = "android_task_executor_maximum_pool_size";
@@ -36,7 +35,7 @@ public class TaskExecutorService {
   private final String name;
   private final int maximumPoolSize;
   private final int keepAliveSeconds;
-  private static Map<String, ExecutorService> executors = new HashMap<>();
+  private static final Map<String, ExecutorService> executors = new HashMap<>();
 
   TaskExecutorService(String name) {
     this.name = name;
@@ -61,7 +60,7 @@ public class TaskExecutorService {
 
   public ExecutorService getExecutor(boolean isTransactional, String identifier) {
     String executorName = getExecutorName(isTransactional, identifier);
-    synchronized(executors) {
+    synchronized (executors) {
       ExecutorService existingExecutor = executors.get(executorName);
       if (existingExecutor == null) {
         ExecutorService newExecutor = getNewExecutor(isTransactional);
@@ -73,44 +72,48 @@ public class TaskExecutorService {
   }
 
   private ExecutorService getNewExecutor(boolean isTransactional) {
-    if (isTransactional == true) {
+    if (isTransactional) {
       return Executors.newSingleThreadExecutor();
     } else {
-      ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(0, maximumPoolSize, keepAliveSeconds, TimeUnit.SECONDS, new SynchronousQueue<Runnable>());
+      ThreadPoolExecutor threadPoolExecutor =
+          new ThreadPoolExecutor(
+              0, maximumPoolSize, keepAliveSeconds, TimeUnit.SECONDS, new SynchronousQueue<>());
       threadPoolExecutor.setRejectedExecutionHandler(executeInFallback);
       return threadPoolExecutor;
     }
   }
 
-  private RejectedExecutionHandler executeInFallback = new RejectedExecutionHandler() {
-    public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
-      if (executor.isShutdown() || executor.isTerminated() || executor.isTerminating()) {
-        return;
-      }
-      ExecutorService fallbackExecutor = getTransactionalExecutor();
-      fallbackExecutor.execute(r);
-    };
-  };
+  private final RejectedExecutionHandler executeInFallback =
+      (r, executor) -> {
+        if (executor.isShutdown() || executor.isTerminated() || executor.isTerminating()) {
+          return;
+        }
+        ExecutorService fallbackExecutor = getTransactionalExecutor();
+        fallbackExecutor.execute(r);
+      };
 
   public String getExecutorName(boolean isTransactional, String identifier) {
-    if (isTransactional == true) {
+    if (isTransactional) {
       return name + "TransactionalExecutor" + identifier;
     }
     return name + "Executor" + identifier;
   }
 
   public void shutdown() {
-    Set<String> existingExecutorNames = executors.keySet();
-    existingExecutorNames.removeIf((executorName) -> {
-      return executorName.startsWith(name) == false;
-    });
-    existingExecutorNames.forEach((executorName) -> {
-      removeExecutor(executorName);
-    });
+    synchronized (executors) {
+      List<String> existingExecutorNames = new ArrayList<>(executors.keySet());
+      for (String executorName : existingExecutorNames) {
+        if (!executorName.startsWith(name)) {
+          executors.remove(executorName);
+        } else {
+          removeExecutor(executorName);
+        }
+      }
+    }
   }
 
   public void removeExecutor(String executorName) {
-    synchronized(executors) {
+    synchronized (executors) {
       ExecutorService existingExecutor = executors.get(executorName);
       if (existingExecutor != null) {
         existingExecutor.shutdownNow();

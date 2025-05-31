@@ -18,28 +18,48 @@
 import {
   isAndroid,
   isBoolean,
-  isString,
   isNull,
+  isString,
   isValidUrl,
 } from '@react-native-firebase/app/lib/common';
+import { setReactNativeModule } from '@react-native-firebase/app/lib/internal/nativeModule';
 import {
-  createModuleNamespace,
   FirebaseModule,
+  createModuleNamespace,
   getFirebaseRoot,
 } from '@react-native-firebase/app/lib/internal';
 import ConfirmationResult from './ConfirmationResult';
 import PhoneAuthListener from './PhoneAuthListener';
+import PhoneMultiFactorGenerator from './PhoneMultiFactorGenerator';
+import Settings from './Settings';
+import User from './User';
+import { getMultiFactorResolver } from './getMultiFactorResolver';
+import { MultiFactorUser, multiFactor } from './multiFactor';
+import AppleAuthProvider from './providers/AppleAuthProvider';
 import EmailAuthProvider from './providers/EmailAuthProvider';
 import FacebookAuthProvider from './providers/FacebookAuthProvider';
 import GithubAuthProvider from './providers/GithubAuthProvider';
 import GoogleAuthProvider from './providers/GoogleAuthProvider';
 import OAuthProvider from './providers/OAuthProvider';
+import OIDCAuthProvider from './providers/OIDCAuthProvider';
 import PhoneAuthProvider from './providers/PhoneAuthProvider';
 import TwitterAuthProvider from './providers/TwitterAuthProvider';
-import AppleAuthProvider from './providers/AppleAuthProvider';
-import Settings from './Settings';
-import User from './User';
 import version from './version';
+import fallBackModule from './web/RNFBAuthModule';
+import { warnDynamicLink } from './utils';
+
+export {
+  AppleAuthProvider,
+  EmailAuthProvider,
+  PhoneAuthProvider,
+  GoogleAuthProvider,
+  GithubAuthProvider,
+  TwitterAuthProvider,
+  FacebookAuthProvider,
+  PhoneMultiFactorGenerator,
+  OAuthProvider,
+  OIDCAuthProvider,
+};
 
 const statics = {
   AppleAuthProvider,
@@ -49,17 +69,20 @@ const statics = {
   GithubAuthProvider,
   TwitterAuthProvider,
   FacebookAuthProvider,
+  PhoneMultiFactorGenerator,
   OAuthProvider,
+  OIDCAuthProvider,
   PhoneAuthState: {
     CODE_SENT: 'sent',
     AUTO_VERIFY_TIMEOUT: 'timeout',
     AUTO_VERIFIED: 'verified',
     ERROR: 'error',
   },
+  getMultiFactorResolver,
+  multiFactor,
 };
 
 const namespace = 'auth';
-
 const nativeModuleName = 'RNFBAuthModule';
 
 class FirebaseAuthModule extends FirebaseModule {
@@ -96,10 +119,42 @@ class FirebaseAuthModule extends FirebaseModule {
 
     this.native.addAuthStateListener();
     this.native.addIdTokenListener();
+
+    // custom authDomain in only available from App's FirebaseOptions,
+    // but we need it in Auth if it exists. During app configuration we store
+    // mappings from app name to authDomain, this auth constructor
+    // is a reasonable time to use the mapping and set it into auth natively
+    this.native.configureAuthDomain();
   }
 
   get languageCode() {
     return this._languageCode;
+  }
+
+  set languageCode(code) {
+    // For modular API, not recommended to set languageCode directly as it should be set in the native SDKs first
+    if (!isString(code) && !isNull(code)) {
+      throw new Error(
+        "firebase.auth().languageCode = (*) expected 'languageCode' to be a string or null value",
+      );
+    }
+    // as this is a setter, we can't use async/await. So we set it first so it is available immediately
+    if (code === null) {
+      this._languageCode = this.native.APP_LANGUAGE[this.app._name];
+
+      if (!this.languageCode) {
+        this._languageCode = this.native.APP_LANGUAGE['[DEFAULT]'];
+      }
+    } else {
+      this._languageCode = code;
+    }
+    // This sets it natively
+    this.setLanguageCode(code);
+  }
+
+  get config() {
+    // for modular API, firebase JS SDK has a config object which is not available in native SDKs
+    return {};
   }
 
   get tenantId() {
@@ -250,6 +305,23 @@ class FirebaseAuthModule extends FirebaseModule {
     return new PhoneAuthListener(this, phoneNumber, _autoVerifyTimeout, _forceResend);
   }
 
+  verifyPhoneNumberWithMultiFactorInfo(multiFactorHint, session) {
+    return this.native.verifyPhoneNumberWithMultiFactorInfo(multiFactorHint.uid, session);
+  }
+
+  verifyPhoneNumberForMultiFactor(phoneInfoOptions) {
+    const { phoneNumber, session } = phoneInfoOptions;
+    return this.native.verifyPhoneNumberForMultiFactor(phoneNumber, session);
+  }
+
+  resolveMultiFactorSignIn(session, verificationId, verificationCode) {
+    return this.native
+      .resolveMultiFactorSignIn(session, verificationId, verificationCode)
+      .then(userCredential => {
+        return this._setUserCredential(userCredential);
+      });
+  }
+
   createUserWithEmailAndPassword(email, password) {
     return this.native
       .createUserWithEmailAndPassword(email, password)
@@ -274,20 +346,22 @@ class FirebaseAuthModule extends FirebaseModule {
       .then(userCredential => this._setUserCredential(userCredential));
   }
 
+  revokeToken(authorizationCode) {
+    return this.native.revokeToken(authorizationCode);
+  }
+
   sendPasswordResetEmail(email, actionCodeSettings = null) {
+    warnDynamicLink(actionCodeSettings);
     return this.native.sendPasswordResetEmail(email, actionCodeSettings);
   }
 
   sendSignInLinkToEmail(email, actionCodeSettings = {}) {
+    warnDynamicLink(actionCodeSettings);
     return this.native.sendSignInLinkToEmail(email, actionCodeSettings);
   }
 
   isSignInWithEmailLink(emailLink) {
-    return (
-      typeof emailLink === 'string' &&
-      (emailLink.includes('mode=signIn') || emailLink.includes('mode%3DsignIn')) &&
-      (emailLink.includes('oobCode=') || emailLink.includes('oobCode%3D'))
-    );
+    return this.native.isSignInWithEmailLink(emailLink);
   }
 
   signInWithEmailLink(email, emailLink) {
@@ -335,16 +409,16 @@ class FirebaseAuthModule extends FirebaseModule {
     throw new Error('firebase.auth().setPersistence() is unsupported by the native Firebase SDKs.');
   }
 
-  signInWithPopup() {
-    throw new Error(
-      'firebase.auth().signInWithPopup() is unsupported by the native Firebase SDKs.',
-    );
+  signInWithPopup(provider) {
+    return this.native
+      .signInWithProvider(provider.toObject())
+      .then(userCredential => this._setUserCredential(userCredential));
   }
 
-  signInWithRedirect() {
-    throw new Error(
-      'firebase.auth().signInWithRedirect() is unsupported by the native Firebase SDKs.',
-    );
+  signInWithRedirect(provider) {
+    return this.native
+      .signInWithProvider(provider.toObject())
+      .then(userCredential => this._setUserCredential(userCredential));
   }
 
   // firebase issue - https://github.com/invertase/react-native-firebase/pull/655#issuecomment-349904680
@@ -360,25 +434,28 @@ class FirebaseAuthModule extends FirebaseModule {
     }
 
     let _url = url;
-    if (isAndroid && _url) {
+    const androidBypassEmulatorUrlRemap =
+      typeof this.firebaseJson.android_bypass_emulator_url_remap === 'boolean' &&
+      this.firebaseJson.android_bypass_emulator_url_remap;
+    if (!androidBypassEmulatorUrlRemap && isAndroid && _url) {
       if (_url.startsWith('http://localhost')) {
         _url = _url.replace('http://localhost', 'http://10.0.2.2');
         // eslint-disable-next-line no-console
         console.log(
-          'Mapping auth host "localhost" to "10.0.2.2" for android emulators. Use real IP on real devices.',
+          'Mapping auth host "localhost" to "10.0.2.2" for android emulators. Use real IP on real devices. You can bypass this behaviour with "android_bypass_emulator_url_remap" flag.',
         );
       }
       if (_url.startsWith('http://127.0.0.1')) {
         _url = _url.replace('http://127.0.0.1', 'http://10.0.2.2');
         // eslint-disable-next-line no-console
         console.log(
-          'Mapping auth host "127.0.0.1" to "10.0.2.2" for android emulators. Use real IP on real devices.',
+          'Mapping auth host "127.0.0.1" to "10.0.2.2" for android emulators. Use real IP on real devices. You can bypass this behaviour with "android_bypass_emulator_url_remap" flag.',
         );
       }
     }
 
     // Native calls take the host and port split out
-    const hostPortRegex = /^http:\/\/([\w\d.]+):(\d+)$/;
+    const hostPortRegex = /^http:\/\/([\w\d-.]+):(\d+)$/;
     const urlMatches = _url.match(hostPortRegex);
     if (!urlMatches) {
       throw new Error('firebase.auth().useEmulator() unable to parse host and port from URL');
@@ -387,6 +464,21 @@ class FirebaseAuthModule extends FirebaseModule {
     const port = parseInt(urlMatches[2], 10);
     this.native.useEmulator(host, port);
     return [host, port]; // undocumented return, useful for unit testing
+  }
+
+  getMultiFactorResolver(error) {
+    return getMultiFactorResolver(this, error);
+  }
+
+  multiFactor(user) {
+    if (user.userId !== this.currentUser.userId) {
+      throw new Error('firebase.auth().multiFactor() only operates on currentUser');
+    }
+    return new MultiFactorUser(this, user);
+  }
+
+  getCustomAuthDomain() {
+    return this.native.getCustomAuthDomain();
   }
 }
 
@@ -406,7 +498,12 @@ export default createModuleNamespace({
   ModuleClass: FirebaseAuthModule,
 });
 
+export * from './modular/index';
+
 // import auth, { firebase } from '@react-native-firebase/auth';
 // auth().X(...);
 // firebase.auth().X(...);
 export const firebase = getFirebaseRoot();
+
+// Register the interop module for non-native platforms.
+setReactNativeModule(nativeModuleName, fallBackModule);

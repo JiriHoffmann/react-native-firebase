@@ -1,7 +1,7 @@
-import firebase from '@react-native-firebase/app';
-import * as auth from '@react-native-firebase/auth';
+// import firebase from '@react-native-firebase/app';
+import firebase, { FirebaseAuthTypes, onAuthStateChanged, signInWithPhoneNumber} from '.';
 
-console.log(auth.default().currentUser);
+console.log(firebase.default().currentUser);
 
 // checks module exists at root
 console.log(firebase.auth().app.name);
@@ -15,13 +15,13 @@ console.log(firebase.app().auth().currentUser);
 console.log(firebase.auth.SDK_VERSION);
 
 // checks statics exist on defaultExport
-console.log(auth.firebase.SDK_VERSION);
+console.log(firebase.firebase.SDK_VERSION);
 
 // checks root exists
 console.log(firebase.SDK_VERSION);
 
 // checks firebase named export exists on module
-console.log(auth.firebase.SDK_VERSION);
+console.log(firebase.firebase.SDK_VERSION);
 
 // checks multi-app support exists
 console.log(firebase.auth(firebase.app()).app.name);
@@ -36,10 +36,9 @@ console.log(firebase.auth.GoogleAuthProvider.PROVIDER_ID);
 console.log(firebase.auth.GithubAuthProvider.PROVIDER_ID);
 console.log(firebase.auth.TwitterAuthProvider.PROVIDER_ID);
 console.log(firebase.auth.FacebookAuthProvider.PROVIDER_ID);
-console.log(firebase.auth.OAuthProvider.PROVIDER_ID);
 console.log(firebase.auth.PhoneAuthState.CODE_SENT);
 
-firebase.auth().onAuthStateChanged(user => {
+firebase.auth().onAuthStateChanged((user: FirebaseAuthTypes.User) => {
   if (user) {
     console.log(user.email);
     console.log(user.displayName);
@@ -51,12 +50,10 @@ console.log(u ? u.displayName : '');
 console.log(u ? u.email : '');
 console.log(u ? u.toJSON() : '');
 
-firebase
-  .auth()
-  .signInAnonymously()
-  .then();
+firebase.auth().signInAnonymously().then();
 
-firebase
-  .auth()
-  .signInWithEmailAndPassword('', '')
-  .then();
+firebase.auth().signInWithEmailAndPassword('', '').then();
+
+// Verify Modular API
+onAuthStateChanged(firebase.auth(), user => console.log(user));
+signInWithPhoneNumber(firebase.auth(), '+1234567890');

@@ -1,9 +1,24 @@
-import firebase from '@react-native-firebase/app';
-import * as firestore from '@react-native-firebase/firestore';
-// tslint:disable-next-line:no-duplicate-imports
-import firestoreExport from '@react-native-firebase/firestore';
+import firebase, {
+  FirebaseFirestoreTypes,
+  addDoc,
+  collection,
+  collectionGroup,
+  doc,
+  endAt,
+  getDoc,
+  getDocFromCache,
+  getDocFromServer,
+  getDocs,
+  getDocsFromCache,
+  getDocsFromServer,
+  onSnapshot,
+  query,
+  startAfter,
+  updateDoc,
+  where,
+} from '.';
 
-console.log(firestoreExport().collection);
+console.log(firebase().collection);
 
 // checks module exists at root
 console.log(firebase.firestore().app.name);
@@ -15,14 +30,11 @@ console.log(firebase.app().firestore().collection('foo'));
 // checks statics exist
 console.log(firebase.firestore.SDK_VERSION);
 
-// checks statics exist on defaultExport
-console.log(firestore.firebase.SDK_VERSION);
-
 // checks root exists
 console.log(firebase.SDK_VERSION);
 
 // checks firebase named export exists on module
-console.log(firestore.firebase.SDK_VERSION);
+console.log(firebase.firebase.SDK_VERSION);
 
 // checks multi-app support exists
 console.log(firebase.firestore(firebase.app()).app.name);
@@ -39,6 +51,7 @@ firebase.firestore.setLogLevel('debug');
 firebase.firestore().collection('foo');
 firebase.firestore().collection('foo').doc('foo').collection('foo');
 firebase.firestore().collection('foo').doc('foo');
+firebase.firestore().collection('foo').where('foo', '==', 'bar');
 firebase.firestore().collection('foo').doc('foo').collection('foo').add({ foo: 'bar' }).then();
 firebase.firestore().collection('foo').doc('foo').update({ foo: 'bar' }).then();
 firebase
@@ -58,10 +71,10 @@ firebase
   .collection('foo')
   .doc('foo')
   .onSnapshot({
-    next: snapshot => {
+    next: (snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
       console.log(snapshot.get('foo'));
     },
-    error: error => {
+    error: (error: { message: any }) => {
       console.log(error.message);
     },
   });
@@ -74,10 +87,10 @@ firebase
       includeMetadataChanges: true,
     },
     {
-      next: snapshot => {
+      next: (snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
         console.log(snapshot.get('foo'));
       },
-      error: error => {
+      error: (error: { message: any }) => {
         console.log(error.message);
       },
       complete() {},
@@ -88,10 +101,10 @@ firebase
   .collection('foo')
   .doc('foo')
   .onSnapshot(
-    snapshot => {
+    (snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
       console.log(snapshot.get('foo'));
     },
-    error => {
+    (error: { message: any }) => {
       console.log(error.message);
     },
     () => {},
@@ -104,16 +117,15 @@ firebase
       includeMetadataChanges: true,
     },
     {
-      next: snapshot => {
+      next: (snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
         console.log(snapshot.docs);
       },
-      error: error => {
+      error: (error: { message: any }) => {
         console.log(error.message);
       },
       complete() {},
     },
   );
-
 firebase
   .firestore()
   .collection('foo')
@@ -195,3 +207,70 @@ firebase
   .then(snapshot => {
     console.log(snapshot.data()!.foo);
   });
+collection(firebase.firestore(), 'foo');
+collection(firebase.firestore(), 'foo', 'foo', 'foo');
+collection(doc(collection(firebase.firestore(), 'foo'), 'foo'), 'foo');
+doc(firebase.firestore(), 'foo', 'foo');
+doc(collection(firebase.firestore(), 'foo'), 'foo');
+query(collection(firebase.firestore(), 'foo'), where('foo', '==', 'bar'));
+addDoc(collection(firebase.firestore(), 'foo'), { foo: 'bar' }).then();
+updateDoc(doc(firebase.firestore(), 'foo', 'foo'), { foo: 'bar' }).then();
+getDoc(doc(firebase.firestore(), 'foo', 'foo')).then();
+getDocFromCache(doc(firebase.firestore(), 'foo', 'foo')).then();
+getDocFromServer(doc(firebase.firestore(), 'foo', 'foo')).then();
+getDocs(query(collectionGroup(firebase.firestore(), 'foo'), endAt(123), startAfter(123))).then();
+getDocsFromCache(
+  query(collectionGroup(firebase.firestore(), 'foo'), endAt(123), startAfter(123)),
+).then();
+getDocsFromServer(
+  query(collectionGroup(firebase.firestore(), 'foo'), endAt(123), startAfter(123)),
+).then();
+onSnapshot(doc(firebase.firestore(), 'foo', 'foo'), () => {});
+onSnapshot(doc(firebase.firestore(), 'foo', 'foo'), {
+  next: (snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
+    console.log(snapshot.get('foo'));
+  },
+  error: (error: { message: any }) => {
+    console.log(error.message);
+  },
+});
+onSnapshot(
+  doc(firebase.firestore(), 'foo', 'foo'),
+  {
+    includeMetadataChanges: true,
+  },
+  {
+    next: (snapshot: FirebaseFirestoreTypes.DocumentSnapshot) => {
+      console.log(snapshot.get('foo'));
+    },
+    error: (error: { message: any }) => {
+      console.log(error.message);
+    },
+    complete() {},
+  },
+);
+onSnapshot(
+  collection(firebase.firestore(), 'foo'),
+  (snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
+    console.log(snapshot.docs);
+  },
+  (error: { message: any }) => {
+    console.log(error.message);
+  },
+  () => {},
+);
+onSnapshot(
+  collection(firebase.firestore(), 'foo'),
+  {
+    includeMetadataChanges: true,
+  },
+  {
+    next: (snapshot: FirebaseFirestoreTypes.QuerySnapshot) => {
+      console.log(snapshot.docs);
+    },
+    error: (error: { message: any }) => {
+      console.log(error.message);
+    },
+    complete() {},
+  },
+);

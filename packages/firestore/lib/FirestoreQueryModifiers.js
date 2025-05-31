@@ -16,10 +16,10 @@
  */
 
 import { isNumber } from '@react-native-firebase/app/lib/common';
+import FirestoreFieldPath, { DOCUMENT_ID } from './FirestoreFieldPath';
 import { buildNativeArray, generateNativeData } from './utils/serialize';
-import { DOCUMENT_ID } from './FirestoreFieldPath';
 
-const OPERATORS = {
+export const OPERATORS = {
   '==': 'EQUAL',
   '>': 'GREATER_THAN',
   '>=': 'GREATER_THAN_OR_EQUAL',
@@ -57,6 +57,14 @@ export default class FirestoreQueryModifiers {
     this._startAfter = undefined;
     this._endAt = undefined;
     this._endBefore = undefined;
+
+    // Pulled out of function to preserve their state
+    this.hasInequality = false;
+    this.hasNotEqual = false;
+    this.hasArrayContains = false;
+    this.hasArrayContainsAny = false;
+    this.hasIn = false;
+    this.hasNotIn = false;
   }
 
   _copy() {
@@ -74,11 +82,17 @@ export default class FirestoreQueryModifiers {
   }
 
   get filters() {
-    return this._filters.map(f => ({ ...f, fieldPath: f.fieldPath._toArray() }));
+    return this._filters.map(f => ({
+      ...f,
+      fieldPath: f.fieldPath instanceof FirestoreFieldPath ? f.fieldPath._toArray() : f.fieldPath,
+    }));
   }
 
   get orders() {
-    return this._orders;
+    return this._orders.map(f => ({
+      ...f,
+      fieldPath: f.fieldPath instanceof FirestoreFieldPath ? f.fieldPath._toArray() : f.fieldPath,
+    }));
   }
 
   get options() {
@@ -192,6 +206,10 @@ export default class FirestoreQueryModifiers {
     return OPERATORS[operator] === 'EQUAL';
   }
 
+  isNotEqualOperator(operator) {
+    return OPERATORS[operator] === 'NOT_EQUAL';
+  }
+
   isInOperator(operator) {
     return (
       OPERATORS[operator] === 'IN' ||
@@ -204,125 +222,111 @@ export default class FirestoreQueryModifiers {
     const filter = {
       fieldPath,
       operator: OPERATORS[opStr],
-      value: generateNativeData(value),
+      value: generateNativeData(value, true),
     };
 
     this._filters = this._filters.concat(filter);
     return this;
   }
 
-  validateWhere() {
-    let hasInequality;
-    let hasNotEqual;
+  filterWhere(filter) {
+    this._filters = this._filters.concat(filter);
+    return this;
+  }
 
-    for (let i = 0; i < this._filters.length; i++) {
-      const filter = this._filters[i];
+  validateWhere() {
+    if (this._filters.length > 0) {
+      this._filterCheck(this._filters);
+    }
+  }
+
+  _filterCheck(filters) {
+    for (let i = 0; i < filters.length; i++) {
+      const filter = filters[i];
+
+      if (filter.queries) {
+        // Recursively check sub-queries for Filters
+        this._filterCheck(filter.queries);
+        // If it is a Filter query, skip the rest of the loop
+        continue;
+      }
+
       // Skip if no inequality
       if (!INEQUALITY[filter.operator]) {
         continue;
       }
 
       if (filter.operator === OPERATORS['!=']) {
-        if (hasNotEqual) {
+        if (this.hasNotEqual) {
           throw new Error("Invalid query. You cannot use more than one '!=' inequality filter.");
         }
         //needs to set hasNotEqual = true  before setting first hasInequality = filter. It is used in a condition check later
-        hasNotEqual = true;
+        this.hasNotEqual = true;
       }
 
       // Set the first inequality
-      if (!hasInequality) {
-        hasInequality = filter;
+      if (!this.hasInequality) {
+        this.hasInequality = filter;
         continue;
-      }
-
-      // Check the set value is the same as the new one
-      if (INEQUALITY[filter.operator] && hasInequality) {
-        if (hasInequality.fieldPath._toPath() !== filter.fieldPath._toPath()) {
-          throw new Error(
-            `Invalid query. All where filters with an inequality (<, <=, >, != or >=) must be on the same field. But you have inequality filters on '${hasInequality.fieldPath._toPath()}' and '${filter.fieldPath._toPath()}'`,
-          );
-        }
       }
     }
 
-    let hasArrayContains;
-    let hasArrayContainsAny;
-    let hasIn;
-    let hasNotIn;
-
-    for (let i = 0; i < this._filters.length; i++) {
-      const filter = this._filters[i];
+    for (let i = 0; i < filters.length; i++) {
+      const filter = filters[i];
 
       if (filter.operator === OPERATORS['array-contains']) {
-        if (hasArrayContains) {
+        if (this.hasArrayContains) {
           throw new Error('Invalid query. Queries only support a single array-contains filter.');
         }
-        hasArrayContains = true;
+        this.hasArrayContains = true;
       }
 
       if (filter.operator === OPERATORS['array-contains-any']) {
-        if (hasArrayContainsAny) {
+        if (this.hasArrayContainsAny) {
           throw new Error(
             "Invalid query. You cannot use more than one 'array-contains-any' filter.",
           );
         }
 
-        if (hasIn) {
-          throw new Error(
-            "Invalid query. You cannot use 'array-contains-any' filters with 'in' filters.",
-          );
-        }
-
-        if (hasNotIn) {
+        if (this.hasNotIn) {
           throw new Error(
             "Invalid query. You cannot use 'array-contains-any' filters with 'not-in' filters.",
           );
         }
 
-        hasArrayContainsAny = true;
+        this.hasArrayContainsAny = true;
       }
 
       if (filter.operator === OPERATORS.in) {
-        if (hasIn) {
-          throw new Error("Invalid query. You cannot use more than one 'in' filter.");
-        }
-
-        if (hasArrayContainsAny) {
-          throw new Error(
-            "Invalid query. You cannot use 'in' filters with 'array-contains-any' filters.",
-          );
-        }
-
-        if (hasNotIn) {
+        if (this.hasNotIn) {
           throw new Error("Invalid query. You cannot use 'in' filters with 'not-in' filters.");
         }
 
-        hasIn = true;
+        this.hasIn = true;
       }
 
       if (filter.operator === OPERATORS['not-in']) {
-        if (hasNotIn) {
+        if (this.hasNotIn) {
           throw new Error("Invalid query. You cannot use more than one 'not-in' filter.");
         }
 
-        if (hasNotEqual) {
+        if (this.hasNotEqual) {
           throw new Error(
             "Invalid query. You cannot use 'not-in' filters with '!=' inequality filters",
           );
         }
 
-        if (hasIn) {
+        if (this.hasIn) {
           throw new Error("Invalid query. You cannot use 'not-in' filters with 'in' filters.");
         }
 
-        if (hasArrayContainsAny) {
+        if (this.hasArrayContainsAny) {
           throw new Error(
             "Invalid query. You cannot use 'not-in' filters with 'array-contains-any' filters.",
           );
         }
 
-        hasNotIn = true;
+        this.hasNotIn = true;
       }
     }
   }
@@ -337,7 +341,7 @@ export default class FirestoreQueryModifiers {
 
   orderBy(fieldPath, directionStr) {
     const order = {
-      fieldPath: fieldPath._toPath(),
+      fieldPath: fieldPath,
       direction: directionStr ? DIRECTIONS[directionStr.toLowerCase()] : DIRECTIONS.asc,
     };
 
@@ -346,9 +350,13 @@ export default class FirestoreQueryModifiers {
   }
 
   validateOrderBy() {
+    this._validateOrderByCheck(this._filters);
+  }
+
+  _validateOrderByCheck(filters) {
     // Ensure order hasn't been called on the same field
     if (this._orders.length > 1) {
-      const orders = this._orders.map($ => $.fieldPath);
+      const orders = this._orders.map($ => $.fieldPath._toPath());
       const set = new Set(orders);
 
       if (set.size !== orders.length) {
@@ -357,13 +365,20 @@ export default class FirestoreQueryModifiers {
     }
 
     // Skip if no where filters
-    if (this._filters.length === 0) {
+    if (filters.length === 0) {
       return;
     }
 
     // Ensure the first order field path is equal to the inequality filter field path
-    for (let i = 0; i < this._filters.length; i++) {
-      const filter = this._filters[i];
+    for (let i = 0; i < filters.length; i++) {
+      const filter = filters[i];
+
+      if (filter.queries) {
+        // Recursively check sub-queries for Filters
+        this._validateOrderByCheck(filter.queries);
+        // If it is a Filter query, skip the rest of the loop
+        continue;
+      }
       const filterFieldPath = filter.fieldPath._toPath();
 
       for (let k = 0; k < this._orders.length; k++) {
@@ -371,7 +386,7 @@ export default class FirestoreQueryModifiers {
         const orderFieldPath = order.fieldPath;
         if (filter.operator === OPERATORS['==']) {
           // Any where() fieldPath parameter cannot match any orderBy() parameter when '==' operand is invoked
-          if (filterFieldPath === orderFieldPath) {
+          if (filterFieldPath === orderFieldPath._toPath()) {
             throw new Error(
               `Invalid query. Query.orderBy() parameter: ${orderFieldPath} cannot be the same as your Query.where() fieldPath parameter: ${filterFieldPath}`,
             );
@@ -386,7 +401,7 @@ export default class FirestoreQueryModifiers {
 
         if (INEQUALITY[filter.operator]) {
           // Initial orderBy() parameter has to match every where() fieldPath parameter when inequality operator is invoked
-          if (filterFieldPath !== this._orders[0].fieldPath) {
+          if (filterFieldPath !== this._orders[0].fieldPath._toPath()) {
             throw new Error(
               `Invalid query. Initial Query.orderBy() parameter: ${orderFieldPath} has to be the same as the Query.where() fieldPath parameter(s): ${filterFieldPath} when an inequality operator is invoked `,
             );

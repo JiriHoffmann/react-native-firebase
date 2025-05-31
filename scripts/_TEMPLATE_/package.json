@@ -12,7 +12,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/invertase/react-native-firebase/tree/master/packages/_template_"
+    "url": "https://github.com/invertase/react-native-firebase/tree/main/packages/_template_"
   },
   "license": "Apache-2.0",
   "keywords": [
@@ -22,14 +22,10 @@
     "_template_"
   ],
   "peerDependencies": {
-    "@react-native-firebase/app": "*"
-  },
-  "dependencies": {
-    "@react-native-firebase/app-types": "_VERSION_",
     "@react-native-firebase/app": "_VERSION_"
   },
-  "gitHead": "2787d4413eb70c61a687c4d6913add6a6a01f582",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   }
 }

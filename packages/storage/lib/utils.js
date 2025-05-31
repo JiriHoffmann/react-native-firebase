@@ -25,6 +25,7 @@ const SETTABLE_FIELDS = [
   'contentLanguage',
   'contentType',
   'customMetadata',
+  'md5hash',
 ];
 
 export async function handleStorageEvent(storageInstance, event) {
@@ -57,7 +58,7 @@ export function getGsUrlParts(url) {
   return { bucket, path };
 }
 
-export function validateMetadata(metadata) {
+export function validateMetadata(metadata, update = true) {
   if (!isObject(metadata)) {
     throw new Error('firebase.storage.SettableMetadata must be an object value if provided.');
   }
@@ -73,6 +74,13 @@ export function validateMetadata(metadata) {
       );
     }
 
+    // md5 is only allowed on put, not on update
+    if (key === 'md5hash' && update === true) {
+      throw new Error(
+        `firebase.storage.SettableMetadata md5hash may only be set on upload, not on updateMetadata`,
+      );
+    }
+
     // validate values
     if (key !== 'customMetadata') {
       if (!isString(value) && !isNull(value)) {
@@ -80,9 +88,9 @@ export function validateMetadata(metadata) {
           `firebase.storage.SettableMetadata invalid property '${key}' should be a string or null value.`,
         );
       }
-    } else if (!isObject(value)) {
+    } else if (!isObject(value) && !isNull(value)) {
       throw new Error(
-        'firebase.storage.SettableMetadata.customMetadata must be an object of keys and string values.',
+        'firebase.storage.SettableMetadata.customMetadata must be an object of keys and string values or null value.',
       );
     }
   }

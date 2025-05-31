@@ -16,19 +16,46 @@
  */
 
 describe('ml()', function () {
-  describe('namespace', function () {
-    it('accessible from firebase.app()', function () {
-      const app = firebase.app();
-      should.exist(app.ml);
-      app.ml().app.should.equal(app);
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
     });
 
-    it('supports multiple apps', async function () {
-      firebase.ml().app.name.should.equal('[DEFAULT]');
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
 
-      firebase.ml(firebase.app('secondaryFromNative')).app.name.should.equal('secondaryFromNative');
+    describe('namespace', function () {
+      it('accessible from firebase.app()', function () {
+        const app = firebase.app();
+        should.exist(app.ml);
+        app.ml().app.should.equal(app);
+      });
 
-      firebase.app('secondaryFromNative').ml().app.name.should.equal('secondaryFromNative');
+      it('supports multiple apps', async function () {
+        firebase.ml().app.name.should.equal('[DEFAULT]');
+
+        firebase
+          .ml(firebase.app('secondaryFromNative'))
+          .app.name.should.equal('secondaryFromNative');
+
+        firebase.app('secondaryFromNative').ml().app.name.should.equal('secondaryFromNative');
+      });
+    });
+  });
+
+  describe('modular', function () {
+    it('supports multiple apps', function () {
+      const { getApp } = modular;
+      const { getML } = mlModular;
+      const ml = getML();
+      const secondaryML = getML(getApp('secondaryFromNative'));
+
+      ml.app.name.should.equal('[DEFAULT]');
+
+      secondaryML.app.name.should.equal('secondaryFromNative');
     });
   });
 });

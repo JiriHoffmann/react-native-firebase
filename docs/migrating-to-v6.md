@@ -86,7 +86,7 @@ include ':app'
 
 #### Removing from Android Manifest
 
-Open your *AndroidManifest.xml* file.  You will need to remove any references to the `io.invertase.firebase.messaging` class
+Open your _AndroidManifest.xml_ file. You will need to remove any references to the `io.invertase.firebase.messaging` class
 
 ```diff
 - <service android:name="io.invertase.firebase.messaging.RNFirebaseMessagingService">
@@ -418,6 +418,7 @@ How to migrate: If you use device-local notification APIs and user-visible notif
 - [android] The manually added `RNFirebaseMessagingService` service in your `AndroidManifest.xml` file is no longer required - you can safely remove it.
 - [iOS] The manually added `RNFirebaseMessaging` usages in your `AppDelegate` files are no longer required - you can safely remove them.
 - The _builder_ syntax has been deprecated in favor of simple objects. See `newRemoteMessage()` documentation for an example.
+- `subscribeToTopic('some-topic')` method must not include "/" in topic.
 - [iOS] The minimum supported iOS version is now 10
 - iOS 9 or lower only accounts for 0.% of all iPhone devices.
 - To see a detailed device versions breakdown see [this link](https://david-smith.org/iosversionstats/).
@@ -449,7 +450,7 @@ How to migrate: If you use device-local notification APIs and user-visible notif
 - Module namespace has been renamed to `.remoteConfig()` from `.config()`.
 - All Remote Config values can now be accessed synchronously in JS, see `getValue(key: string): ConfigValue` & `getAll(): ConfigValues` below.
   - These replace all the original async methods: `getValue`, `getValues`, `getKeysByPrefix`.
-- `setDefaultsFromResource` now returns a Promise that resolves when completed, this will reject with code `config/resouce_not_found` if the file could not be found.
+- `setDefaultsFromResource` now returns a Promise that resolves when completed, this will reject with code `config/resource_not_found` if the file could not be found.
 - `setDefaultsFromResource` now expects a resource file name for Android to match iOS, formerly this required a resource id (something you would not have in RN as this was generated at build time by Android).
   - An example for both platforms can be found in the tests.
 - `enableDeveloperMode` has been removed, you can now use `setConfigSettings({ isDeveloperModeEnabled: boolean })` instead.

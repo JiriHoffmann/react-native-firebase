@@ -35,7 +35,7 @@ export default class FirestoreGeoPoint {
 
     if (!isFinite(latitude) || latitude < -90 || latitude > 90) {
       throw new Error(
-        `firebase.firestore.GeoPoint 'longitude' must be a number between -90 and 90, but was: ${latitude}.`,
+        `firebase.firestore.GeoPoint 'latitude' must be a number between -90 and 90, but was: ${latitude}.`,
       );
     }
 
@@ -65,5 +65,12 @@ export default class FirestoreGeoPoint {
     }
 
     return this._latitude === other._latitude && this._longitude === other._longitude;
+  }
+
+  toJSON() {
+    return {
+      latitude: this._latitude,
+      longitude: this._longitude,
+    };
   }
 }

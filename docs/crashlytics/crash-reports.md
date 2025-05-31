@@ -11,11 +11,11 @@ Once you have Crashlytics up and running in your app, you can navigate to Crashl
 'Quality' and start reviewing the reports as they come in. If this page still tells you to setup, build or run your app
 then you have not correctly setup Crashlytics in your app (see [Usage](/crashlytics/usage)).
 
-> Keep in mind when testing out Crashlytics that Crashlytics is [disabled by default in debug mode](crashlytics/usage#crashlytics-in-debug-mode).
+> Keep in mind when testing out Crashlytics that Crashlytics is [disabled by default in debug mode](/crashlytics/usage#enable-debug-crash-logs). You may even find a more in-depth guide useful if you are really struggling with testing your crash report integration - we have [an in-depth article about configuring and testing Crashlytics to help you.](https://invertase.io/blog/react-native-firebase-crashlytics-configuration)
 
-Upon running the first two examples under [usage](crashlytics/usage), you will be shown a display similar to following image.
+Upon running the first two examples under [usage](/crashlytics/usage), you will be shown a display similar to following image.
 ![](https://i.imgur.com/YIQ88ZF.png)
-In this example the [Crash Attributes](crashlytics/usage#crash-attributes) example was ran four times and the [Error Reports](#error-reports) example three times, in addition to several miscellaneous exceptions that have occurred during the write-up.
+In this example the [Crash Attributes](/crashlytics/usage#crash-attributes) example was ran four times and the [Error Reports](/crashlytics/usage#error-reports) example three times, in addition to several miscellaneous exceptions that have occurred during the write-up.
 
 > If you are certain that your app has produced error reports, but none are visible, try restarting your app fully. Crashlytics only uploads reports upon launching the app.
 
@@ -46,3 +46,14 @@ you to filter it out in the overview by selecting 'Open' under 'Issue state', wh
 This is visible in the first example, where we're displaying only 3 relevant non-fatal events out of the 12 that occurred.
 When the same issue re-occurs, it will automatically open again. By clicking the arrow next to the button we can mute the
 issue, preventing this from happening.
+
+# Android ANR Collection Support
+
+The Firebase Team enabled the ability to collect
+Application Not Responding (ANR) issues that occur when the UI thread of an Android app is blocked for too long,
+for more information on ANR see the
+[android developer documentation](https://developer.android.com/topic/performance/vitals/anr).
+
+The support for ANR collection is added in the Android Crashlytics version
+[18.2.4](https://firebase.google.com/support/release-notes/android#crashlytics_v18-2-4)
+so that your react native application can collect ANR, make sure you are using at least version 13.0.1 of this library

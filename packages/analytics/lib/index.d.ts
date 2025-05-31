@@ -94,7 +94,7 @@ export namespace FirebaseAnalyticsTypes {
     /**
      * The Google [Place ID](https://developers.google.com/places/place-id) that corresponds to the associated item (String). Alternatively, you can supply your own custom Location ID.
      */
-    item_location_id?: string;
+    location_id?: string;
     /**
      * The Item variant.
      */
@@ -103,6 +103,49 @@ export namespace FirebaseAnalyticsTypes {
      * The Item quantity.
      */
     quantity?: number;
+    /**
+     * The Item price.
+     * Note that firebase analytics will display this as an integer with trailing zeros, due to some firebase-internal conversion.
+     * See https://github.com/invertase/react-native-firebase/issues/4578#issuecomment-771703420 for more information
+     */
+    price?: number;
+    /**
+     * The affiliation of the item.
+     */
+    affiliation?: string;
+    /**
+     * The coupon associated with the item.
+     */
+    coupon?: string;
+    /**
+     * The creative name associated with the item.
+     */
+    creative_name?: string;
+    /**
+     * The creative slot associated with the item.
+     */
+    creative_slot?: string;
+    /**
+     * The discount applied to the item.
+     */
+    discount?: Currency;
+    /**
+     * The index of the item.
+     */
+    index?: number;
+    /**
+     * The promotion ID associated with the item.
+     */
+    promotion_id?: string;
+    /**
+     * The promotion name associated with the item.
+     */
+    promotion_name?: string;
+    /**
+     * Custom event parameters. The parameter names can be up to 40 characters long and must start with an alphabetic character and contain only alphanumeric characters and underscores. String parameter values can be up to 100 characters long.
+     * The "firebase_", "google_" and "ga_" prefixes are reserved and should not be used for parameter names.
+     */
+    [key: string]: string | number;
   }
 
   export interface AddPaymentInfoEventParameters {
@@ -173,6 +216,10 @@ export namespace FirebaseAnalyticsTypes {
     coupon?: string;
 
     items?: Item[];
+    /**
+     * Custom event parameters.
+     */
+    [key: string]: any;
   }
 
   export interface CampaignDetailsEventParameters {
@@ -203,10 +250,10 @@ export namespace FirebaseAnalyticsTypes {
     cp1?: string;
   }
 
-  /**
-   * Unsupported in "Enhanced Ecommerce reports":
-   * https://firebase.google.com/docs/reference/android/com/google/firebase/analytics/FirebaseAnalytics.Event#public-static-final-string-checkout_progress
-   */
+  //
+  // Unsupported in "Enhanced Ecommerce reports":
+  // https://firebase.google.com/docs/reference/android/com/google/firebase/analytics/FirebaseAnalytics.Event#public-static-final-string-checkout_progress
+  //
   // export interface CheckoutProgressEventParameters {
   //   checkout_step: string;
   //   checkout_options: string;
@@ -223,6 +270,7 @@ export namespace FirebaseAnalyticsTypes {
      */
     value: number;
   }
+
   export interface GenerateLeadEventParameters {
     /**
      * Purchase currency in 3 letter [ISO_4217](https://en.wikipedia.org/wiki/ISO_4217#Active_codes) format. E.g. `USD`.
@@ -327,6 +375,10 @@ export namespace FirebaseAnalyticsTypes {
      * A single ID for a ecommerce group transaction.
      */
     transaction_id?: string;
+    /**
+     * Custom event parameters.
+     */
+    [key: string]: any;
   }
 
   export interface ScreenViewParameters {
@@ -338,6 +390,11 @@ export namespace FirebaseAnalyticsTypes {
      * Current class associated with the view the user is currently viewing.
      */
     screen_class?: string;
+
+    /**
+     * Custom event parameters.
+     */
+    [key: string]: any;
   }
 
   export interface RefundEventParameters {
@@ -385,7 +442,7 @@ export namespace FirebaseAnalyticsTypes {
     value?: number;
     /**
      * Purchase currency in 3 letter [ISO_4217](https://en.wikipedia.org/wiki/ISO_4217#Active_codes) format. E.g. `USD`.
-    x */
+     x */
     currency?: string;
   }
 
@@ -444,6 +501,13 @@ export namespace FirebaseAnalyticsTypes {
      * The name of the list in which the item was presented to the user
      */
     item_list_name: string;
+  }
+
+  export interface SetCheckoutOptionEventParameters {
+    checkout_step?: EventParams['checkout_step'];
+    checkout_option?: EventParams['checkout_option'];
+
+    [key: string]: any;
   }
 
   export interface SelectPromotionEventParameters {
@@ -508,6 +572,7 @@ export namespace FirebaseAnalyticsTypes {
      */
     value: number;
   }
+
   export interface UnlockAchievementEventParameters {
     /**
      * Game achievement ID (String).
@@ -607,6 +672,7 @@ export namespace FirebaseAnalyticsTypes {
      */
     shipping_tier?: string;
   }
+
   /**
    * Unsupported in "Enhanced Ecommerce reports":
    * https://firebase.google.com/docs/reference/android/com/google/firebase/analytics/FirebaseAnalytics.Event#public-static-final-string-view_search_results
@@ -618,8 +684,173 @@ export namespace FirebaseAnalyticsTypes {
   //   search_term: string;
   // }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   export interface Statics {}
+
+  /**
+   * Analytics instance initialization options. Web only.
+   */
+  export interface AnalyticsSettings {
+    config?: GtagConfigParams | EventParams;
+  }
+
+  /**
+   * Additional options that can be passed to Analytics method calls such as logEvent. Web only.
+   */
+  export interface AnalyticsCallOptions {
+    /**
+     * If true, this config or event call applies globally to all Google Analytics properties on the page. Web only.
+     */
+    global: boolean;
+  }
+
+  /**
+   * A set of common Google Analytics config settings recognized by gtag.js. Web only.
+   */
+  export interface GtagConfigParams {
+    /**
+     * Whether or not a page view should be sent.
+     * If set to true (default), a page view is automatically sent upon initialization
+     * of analytics.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/page-view | Page views }
+     */
+    send_page_view?: boolean;
+    /**
+     * The title of the page.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/page-view | Page views }
+     */
+    page_title?: string;
+    /**
+     * The URL of the page.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/page-view | Page views }
+     */
+    page_location?: string;
+    /**
+     * Defaults to `auto`.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id | Cookies and user identification }
+     */
+    cookie_domain?: string;
+    /**
+     * Defaults to 63072000 (two years, in seconds).
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id | Cookies and user identification }
+     */
+    cookie_expires?: number;
+    /**
+     * Defaults to `_ga`.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id | Cookies and user identification }
+     */
+    cookie_prefix?: string;
+    /**
+     * If set to true, will update cookies on each page load.
+     * Defaults to true.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id | Cookies and user identification }
+     */
+    cookie_update?: boolean;
+    /**
+     * Appends additional flags to the cookie when set.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/cookies-user-id | Cookies and user identification }
+     */
+    cookie_flags?: string;
+    /**
+     * If set to false, disables all advertising features with `gtag.js`.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/display-features | Disable advertising features }
+     */
+    allow_google_signals?: boolean;
+    /**
+     * If set to false, disables all advertising personalization with `gtag.js`.
+     * See {@link https://developers.google.com/analytics/devguides/collection/ga4/display-features | Disable advertising features }
+     */
+    allow_ad_personalization_signals?: boolean;
+
+    [key: string]: unknown;
+  }
+
+  /**
+   * Standard gtag.js event parameters. For more information, see the GA4 reference documentation. Web only.
+   */
+  export interface EventParams {
+    checkout_option?: string;
+    checkout_step?: number;
+    item_id?: string;
+    content_type?: string;
+    coupon?: string;
+    currency?: string;
+    description?: string;
+    fatal?: boolean;
+    items?: Item[];
+    method?: string;
+    number?: string;
+    promotions?: Promotion[];
+    screen_name?: string;
+    /**
+     * Firebase-specific. Use to log a `screen_name` to Firebase Analytics.
+     */
+    firebase_screen?: string;
+    /**
+     * Firebase-specific. Use to log a `screen_class` to Firebase Analytics.
+     */
+    firebase_screen_class?: string;
+    search_term?: string;
+    shipping?: Currency;
+    tax?: Currency;
+    transaction_id?: string;
+    value?: number;
+    event_label?: string;
+    event_category?: string;
+    shipping_tier?: string;
+    item_list_id?: string;
+    item_list_name?: string;
+    promotion_id?: string;
+    promotion_name?: string;
+    payment_type?: string;
+    affiliation?: string;
+    page_title?: string;
+    page_location?: string;
+    page_path?: string;
+
+    [key: string]: unknown;
+  }
+
+  /**
+   * Consent status settings for each consent type.
+   * For more information, see
+   * {@link https://developers.google.com/tag-platform/tag-manager/templates/consent-apis
+   * | the GA4 reference documentation for consent state and consent types}.
+   */
+  export interface ConsentSettings {
+    /** Enables storage, such as cookies, related to advertising */
+    ad_storage?: boolean;
+    /** Sets consent for sending user data to Google for online advertising purposes */
+    ad_user_data?: boolean;
+    /** Sets consent for personalized advertising */
+    ad_personalization?: boolean;
+    /** Enables storage, such as cookies, related to analytics (for example, visit duration) */
+    analytics_storage?: boolean;
+    /**
+     * Enables storage that supports the functionality of the website or app such as language settings
+     */
+    functionality_storage?: boolean;
+    /** Enables storage related to personalization such as video recommendations */
+    personalization_storage?: boolean;
+    /**
+     * Enables storage related to security such as authentication functionality, fraud prevention,
+     * and other user protection.
+     */
+    security_storage?: ConsentStatusString;
+
+    [key: string]: unknown;
+  }
+
+  /**
+   * Specifies custom options for your Firebase Analytics instance.
+   * You must set these before initializing `firebase.analytics()`.
+   */
+  export interface SettingsOptions {
+    /** Sets custom name for `gtag` function. */
+    gtagName?: string;
+    /** Sets custom name for `dataLayer` array used by `gtag.js`. */
+    dataLayerName?: string;
+  }
 
   /**
    * The Firebase Analytics service interface.
@@ -636,7 +867,12 @@ export namespace FirebaseAnalyticsTypes {
    */
   export class Module extends FirebaseModule {
     /**
-     * Log a custom event with optional params.
+     * Log a custom event with optional params. Note that there are various limits that applied
+     * to event parameters (total parameter count, etc), but analytics applies the limits during
+     * cloud processing, the errors will not be seen as Promise rejections when you call logEvent.
+     * While integrating this API in your app you are strongly encouraged to enable
+     * [DebugView](https://firebase.google.com/docs/analytics/debugview) -
+     * any errors in your events will show up in the firebase web console with links to relevant documentation
      *
      * #### Example
      *
@@ -650,8 +886,13 @@ export namespace FirebaseAnalyticsTypes {
      *
      * @param name Event name must not conflict with any Reserved Events.
      * @param params Parameters to be sent and displayed with the event.
+     * @param options Additional options that can be passed. Web only.
      */
-    logEvent(name: string, params?: { [key: string]: any }): Promise<void>;
+    logEvent(
+      name: string,
+      params?: { [key: string]: any },
+      options?: AnalyticsCallOptions,
+    ): Promise<void>;
 
     /**
      * If true, allows the device to collect analytical data and send it to
@@ -681,6 +922,33 @@ export namespace FirebaseAnalyticsTypes {
      * @param milliseconds The default value is 1800000 (30 minutes).
      */
     setSessionTimeoutDuration(milliseconds?: number): Promise<void>;
+
+    /**
+     * Retrieve the app instance id of the application.
+     *
+     * #### Example
+     *
+     * ```js
+     * const appInstanceId = await firebase.analytics().getAppInstanceId();
+     * ```
+     *
+     * @returns Returns the app instance id or null on android if FirebaseAnalytics.ConsentType.ANALYTICS_STORAGE has been set to FirebaseAnalytics.ConsentStatus.DENIED and null on iOS if ConsentType.analyticsStorage has been set to ConsentStatus.denied.
+     */
+    getAppInstanceId(): Promise<string | null>;
+
+    /**
+     * Retrieves the session id from the client.
+     * On iOS, Firebase SDK may return an error that is handled internally and may take many minutes to return a valid value. Check native debug logs for more details.
+     *
+     * #### Example
+     *
+     * ```js
+     * const sessionId = await firebase.analytics().getSessionId();
+     * ```
+     *
+     * @returns Returns the session id or null if session is expired, null on android if FirebaseAnalytics.ConsentType.ANALYTICS_STORAGE has been set to FirebaseAnalytics.ConsentStatus.DENIED and null on iOS if ConsentType.analyticsStorage has been set to ConsentStatus.denied.
+     */
+    getSessionId(): Promise<number | null>;
 
     /**
      * Gives a user a unique identification.
@@ -729,8 +997,12 @@ export namespace FirebaseAnalyticsTypes {
      *
      * @react-native-firebase
      * @param properties Set a property value to null to remove it.
+     * @param options Additional options that can be passed. Web only.
      */
-    setUserProperties(properties: { [key: string]: string | null }): Promise<void>;
+    setUserProperties(
+      properties: { [key: string]: string | null },
+      options?: AnalyticsCallOptions,
+    ): Promise<void>;
 
     /**
      * Clears all analytics data for this instance from the device and resets the app instance ID.
@@ -742,6 +1014,7 @@ export namespace FirebaseAnalyticsTypes {
      * ```
      */
     resetAnalyticsData(): Promise<void>;
+
     /**
      * E-Commerce Purchase event. This event signifies that an item(s) was purchased by a user. Note: This is different from the in-app purchase event, which is reported
      * automatically for Google Play-based apps.
@@ -766,6 +1039,7 @@ export namespace FirebaseAnalyticsTypes {
      * ```
      */
     logPurchase(params: PurchaseEventParameters): Promise<void>;
+
     /**
      * Sets or clears the screen name and class the user is currently viewing
      *
@@ -780,6 +1054,7 @@ export namespace FirebaseAnalyticsTypes {
      *
      */
     logScreenView(params: ScreenViewParameters): Promise<void>;
+
     /**
      * Add Payment Info event. This event signifies that a user has submitted their payment information to your app.
      *
@@ -945,6 +1220,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.CampaignDetailsEventParameters}.
      */
     logCampaignDetails(params: CampaignDetailsEventParameters): Promise<void>;
+
     /**
      * View Promotion event. This event signifies that a promotion was shown to a user.
      *
@@ -984,6 +1260,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.EarnVirtualCurrencyEventParameters}.
      */
     logEarnVirtualCurrency(params: EarnVirtualCurrencyEventParameters): Promise<void>;
+
     /**
      * Generate Lead event. Log this event when a lead has been generated in the app to understand
      * the efficacy of your install and re-engagement campaigns.
@@ -1114,6 +1391,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.PostScoreEventParameters}.
      */
     logPostScore(params: PostScoreEventParameters): Promise<void>;
+
     /**
      * Remove from cart event.
      *
@@ -1137,6 +1415,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.RemoveFromCartEventParameters}.
      */
     logRemoveFromCart(params: RemoveFromCartEventParameters): Promise<void>;
+
     /**
      * E-Commerce Refund event. This event signifies that a refund was issued.
      *
@@ -1179,13 +1458,14 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.SearchEventParameters}.
      */
     logSearch(params: SearchEventParameters): Promise<void>;
+
     /**
      * Select Content event. This general purpose event signifies that a user has selected some
      * content of a certain type in an app. The content can be any object in your app. This event
      * can help you identify popular content and categories of content in your app.
      *
      * Logged event name: `select_content`
-     *ana
+     *
      * #### Example
      *
      * ```js
@@ -1198,26 +1478,33 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.SelectContentEventParameters}.
      */
     logSelectContent(params: SelectContentEventParameters): Promise<void>;
+
     /**
-     * Select Content event. This general purpose event signifies that a user has selected some
-     * content of a certain type in an app. The content can be any object in your app. This event
-     * can help you identify popular content and categories of content in your app.
+     * Select Item event. This event signifies that an item was selected by a user from a list.
+     * Use the appropriate parameters to contextualize the event.
+     * Use this event to discover the most popular items selected.
      *
-     * Logged event name: `select_content`
-     *ana
+     * Logged event name: `select_item`
+     *
      * #### Example
      *
      * ```js
      * await firebase.analytics().logSelectItem({
      *  item_list_id: '54690834',
-     *  item_list_name: 'purple baseball cap',
-     *  content_type: 'cap',
+     *  item_list_name: 't-shirts',
+     *  items: [{
+     *     item_brand: 'cool-shirt-brand',
+     *     item_id: '23456',
+     *     item_name: 'orange t-shirt',
+     *     item_category: 'round necked t-shirts',
+     *   }]
      * });
      * ```
      *
      * @param params See {@link analytics.SelectItemEventParameters}.
      */
     logSelectItem(params: SelectItemEventParameters): Promise<void>;
+
     /**
      * Set checkout option event.
      *
@@ -1391,6 +1678,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.ViewItemEventParameters}.
      */
     logViewItem(params: ViewItemEventParameters): Promise<void>;
+
     /**
      * E-commerce View Cart event. This event signifies that a user has viewed their cart. Use this to analyze your purchase funnel.
      *
@@ -1433,6 +1721,7 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.ViewItemListEventParameters}.
      */
     logViewItemList(params: ViewItemListEventParameters): Promise<void>;
+
     /**
      * View Search Results event. Log this event when the user has been presented with the results of a search.
      *
@@ -1449,7 +1738,132 @@ export namespace FirebaseAnalyticsTypes {
      * @param params See {@link analytics.ViewSearchResultsParameters}.
      */
     logViewSearchResults(params: ViewSearchResultsParameters): Promise<void>;
+
+    /**
+     * Adds parameters that will be set on every event logged from the SDK, including automatic ones.
+     *
+     * #### Example
+     *
+     * ```js
+     * await firebase.analytics().setDefaultEventParameters({
+     *   userId: '1234',
+     * });
+     * ```
+     *
+     *
+     * @param params Parameters to be added to the map of parameters added to every event.
+     * They will be added to the map of default event parameters, replacing any existing
+     * parameter with the same name. Valid parameter values are String, long, and double.
+     * Setting a key's value to null will clear that parameter. Passing in a null bundle
+     * will clear all parameters.
+     */
+    setDefaultEventParameters(params?: { [key: string]: any }): Promise<void>;
+
+    /**
+     * Start privacy-sensitive on-device conversion management.
+     * This is iOS-only.
+     * This is a no-op if you do not include '$RNFirebaseAnalyticsGoogleAppMeasurementOnDeviceConversion = true' in your Podfile.
+     *
+     * @platform ios
+     * @param emailAddress email address, properly formatted complete with domain name e.g, 'user@example.com'
+     */
+    initiateOnDeviceConversionMeasurementWithEmailAddress(emailAddress: string): Promise<void>;
+
+    /**
+     * Start privacy-sensitive on-device conversion management.
+     * This is iOS-only.
+     * This is a no-op if you do not include '$RNFirebaseAnalyticsGoogleAppMeasurementOnDeviceConversion = true' in your Podfile.
+     * You need to pass the sha256-hashed of normalized email address to this function. See [this link](https://firebase.google.com/docs/tutorials/ads-ios-on-device-measurement/step-3#use-hashed-credentials) for more information.
+     *
+     * @platform ios
+     * @param hashedEmailAddress sha256-hashed of normalized email address, properly formatted complete with domain name e.g, 'user@example.com'
+     */
+    initiateOnDeviceConversionMeasurementWithHashedEmailAddress(
+      hashedEmailAddress: string,
+    ): Promise<void>;
+
+    /**
+     * Start privacy-sensitive on-device conversion management.
+     * This is iOS-only.
+     * This is a no-op if you do not include '$RNFirebaseAnalyticsGoogleAppMeasurementOnDeviceConversion = true' in your Podfile.
+     *
+     * @platform ios
+     * @param phoneNumber phone number in E.164 format - that is a leading + sign, then up to 15 digits, no dashes or spaces.
+     */
+    initiateOnDeviceConversionMeasurementWithPhoneNumber(phoneNumber: string): Promise<void>;
+
+    /**
+     * Start privacy-sensitive on-device conversion management.
+     * This is iOS-only.
+     * This is a no-op if you do not include '$RNFirebaseAnalyticsGoogleAppMeasurementOnDeviceConversion = true' in your Podfile.
+     * You need to pass the sha256-hashed of phone number in E.164 format. See [this link](https://firebase.google.com/docs/tutorials/ads-ios-on-device-measurement/step-3#use-hashed-credentials) for more information.
+     *
+     * @platform ios
+     * @param hashedPhoneNumber sha256-hashed of normalized phone number in E.164 format - that is a leading + sign, then up to 15 digits, no dashes or spaces.
+     */
+    initiateOnDeviceConversionMeasurementWithHashedPhoneNumber(
+      hashedPhoneNumber: string,
+    ): Promise<void>;
+
+    /**
+     * For Consent Mode!
+     *
+     * #### Example
+     *
+     * ```js
+     * // Disable consent
+     * await firebase.analytics().setConsent({
+     *  ad_personalization: false,
+     *  analytics_storage: false,
+     *  ad_storage: false,
+     *  ad_user_data: false,
+     * });
+     * ```
+     *
+     * Sets the applicable end user consent state (e.g., for device identifiers) for this app on this device.
+     * Use the consent map to specify individual consent type values.
+     * Settings are persisted across app sessions.
+     * @param consentSettings Consent status settings for each consent type.
+     */
+    setConsent(consentSettings: ConsentSettings): Promise<void>;
   }
+
+  /**
+   * Any custom event name string not in the standard list of recommended event names.
+   */
+  export declare type CustomEventName<T> = T extends EventNameString ? never : T;
+  /**
+   * Type for standard Google Analytics event names. logEvent also accepts any custom string and interprets it as a custom event name.
+   * See https://firebase.google.com/docs/reference/js/analytics.md#eventnamestring
+   */
+  export declare type EventNameString =
+    | 'add_payment_info'
+    | 'add_shipping_info'
+    | 'add_to_cart'
+    | 'add_to_wishlist'
+    | 'begin_checkout'
+    | 'checkout_progress'
+    | 'exception'
+    | 'generate_lead'
+    | 'login'
+    | 'page_view'
+    | 'purchase'
+    | 'refund'
+    | 'remove_from_cart'
+    | 'screen_view'
+    | 'search'
+    | 'select_content'
+    | 'select_item'
+    | 'select_promotion'
+    | 'set_checkout_option'
+    | 'share'
+    | 'sign_up'
+    | 'timing_complete'
+    | 'view_cart'
+    | 'view_item'
+    | 'view_item_list'
+    | 'view_promotion'
+    | 'view_search_results';
 }
 
 declare const defaultExport: ReactNativeFirebase.FirebaseModuleWithStatics<
@@ -1464,15 +1878,17 @@ export const firebase: ReactNativeFirebase.Module & {
   ): ReactNativeFirebase.FirebaseApp & { analytics(): FirebaseAnalyticsTypes.Module };
 };
 
+export * from './modular';
+
 export default defaultExport;
 
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
+
     interface Module {
       analytics: FirebaseModuleWithStatics<
         FirebaseAnalyticsTypes.Module,

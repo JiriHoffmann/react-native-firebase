@@ -20,28 +20,27 @@ package io.invertase.firebase.messaging;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
-
 import androidx.core.app.NotificationManagerCompat;
-
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
 import com.google.android.gms.tasks.Tasks;
-import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
-
+import io.invertase.firebase.common.ReactNativeFirebaseEventEmitter;
+import io.invertase.firebase.common.ReactNativeFirebaseModule;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.invertase.firebase.common.ReactNativeFirebaseEventEmitter;
-import io.invertase.firebase.common.ReactNativeFirebaseModule;
-
-public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModule implements ActivityEventListener {
+public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModule
+    implements ActivityEventListener {
   private static final String TAG = "Messaging";
-  RemoteMessage initialNotification = null;
+  ReadableMap initialNotification = null;
   private HashMap<String, Boolean> initialNotificationMap = new HashMap<>();
 
   ReactNativeFirebaseMessagingModule(ReactApplicationContext reactContext) {
@@ -49,17 +48,18 @@ public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModul
     reactContext.addActivityEventListener(this);
   }
 
-  private RemoteMessage popRemoteMessageFromMessagingStore(String messageId) {
-    ReactNativeFirebaseMessagingStore messagingStore = ReactNativeFirebaseMessagingStoreHelper.getInstance().getMessagingStore();
-    RemoteMessage remoteMessage = messagingStore.getFirebaseMessage(messageId);
+  private WritableMap popRemoteMessageMapFromMessagingStore(String messageId) {
+    ReactNativeFirebaseMessagingStore messagingStore =
+        ReactNativeFirebaseMessagingStoreHelper.getInstance().getMessagingStore();
+    WritableMap remoteMessageMap = messagingStore.getFirebaseMessageMap(messageId);
     messagingStore.clearFirebaseMessage(messageId);
-    return remoteMessage;
+    return remoteMessageMap;
   }
 
   @ReactMethod
   public void getInitialNotification(Promise promise) {
     if (initialNotification != null) {
-      promise.resolve(ReactNativeFirebaseMessagingSerializer.remoteMessageToWritableMap(initialNotification));
+      promise.resolve(initialNotification);
       initialNotification = null;
       return;
     } else {
@@ -75,19 +75,27 @@ public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModul
 
           // only handle non-consumed initial notifications
           if (messageId != null && initialNotificationMap.get(messageId) == null) {
-            RemoteMessage remoteMessage = ReactNativeFirebaseMessagingReceiver.notifications.get(messageId);
+            WritableMap remoteMessageMap;
+            RemoteMessage remoteMessage =
+                ReactNativeFirebaseMessagingReceiver.notifications.get(messageId);
             if (remoteMessage == null) {
-              remoteMessage = popRemoteMessageFromMessagingStore(messageId);
+              remoteMessageMap = popRemoteMessageMapFromMessagingStore(messageId);
+            } else {
+              remoteMessageMap =
+                  ReactNativeFirebaseMessagingSerializer.remoteMessageToWritableMap(remoteMessage);
             }
-            if (remoteMessage != null) {
-              promise.resolve(ReactNativeFirebaseMessagingSerializer.remoteMessageToWritableMap(remoteMessage));
+            if (remoteMessageMap != null) {
+              promise.resolve(remoteMessageMap);
               initialNotificationMap.put(messageId, true);
               return;
             }
           }
         }
       } else {
-        Log.w(TAG, "Attempt to call getInitialNotification failed. The current activity is not ready, try calling the method later in the React lifecycle.");
+        Log.w(
+            TAG,
+            "Attempt to call getInitialNotification failed. The current activity is not ready, try"
+                + " calling the method later in the React lifecycle.");
       }
     }
 
@@ -96,111 +104,188 @@ public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModul
 
   @ReactMethod
   public void setAutoInitEnabled(Boolean enabled, Promise promise) {
-    Tasks
-      .call(getExecutor(), () -> {
-        FirebaseMessaging.getInstance().setAutoInitEnabled(enabled);
-        return null;
-      })
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(FirebaseMessaging.getInstance().isAutoInitEnabled());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              FirebaseMessaging.getInstance().setAutoInitEnabled(enabled);
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(FirebaseMessaging.getInstance().isAutoInitEnabled());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
-  public void getToken(String authorizedEntity, String scope, Promise promise) {
-    Tasks
-      .call(getExecutor(), () -> FirebaseInstanceId.getInstance().getToken(authorizedEntity, scope))
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+  public void isNotificationDelegationEnabled(Promise promise) {
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              FirebaseMessaging.getInstance().isNotificationDelegationEnabled();
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
-  public void deleteToken(String authorizedEntity, String scope, Promise promise) {
-    Tasks
-      .call(getExecutor(), () -> {
-        FirebaseInstanceId.getInstance().deleteToken(authorizedEntity, scope);
-        return null;
-      })
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+  public void setNotificationDelegationEnabled(Boolean enabled, Promise promise) {
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              FirebaseMessaging.getInstance().setNotificationDelegationEnabled(enabled);
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(FirebaseMessaging.getInstance().isNotificationDelegationEnabled());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
+  }
+
+  @ReactMethod
+  public void getToken(String appName, String senderId, Promise promise) {
+    FirebaseMessaging messagingInstance =
+        FirebaseApp.getInstance(appName).get(FirebaseMessaging.class);
+    Tasks.call(getExecutor(), () -> Tasks.await(messagingInstance.getToken()))
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
+  }
+
+  @ReactMethod
+  public void deleteToken(String appName, String senderId, Promise promise) {
+    FirebaseMessaging messagingInstance =
+        FirebaseApp.getInstance(appName).get(FirebaseMessaging.class);
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              Tasks.await(messagingInstance.deleteToken());
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
   public void hasPermission(Promise promise) {
-    Tasks
-      .call(getExecutor(), () -> NotificationManagerCompat.from(getReactApplicationContext()).areNotificationsEnabled())
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult() ? 1 : 0);
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+    Tasks.call(
+            getExecutor(),
+            () ->
+                NotificationManagerCompat.from(getReactApplicationContext())
+                    .areNotificationsEnabled())
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult() ? 1 : 0);
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
   public void sendMessage(ReadableMap remoteMessageMap, Promise promise) {
-    Tasks
-      .call(getExecutor(), () -> {
-        FirebaseMessaging.getInstance().send(ReactNativeFirebaseMessagingSerializer.remoteMessageFromReadableMap(remoteMessageMap));
-        return null;
-      })
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              FirebaseMessaging.getInstance()
+                  .send(
+                      ReactNativeFirebaseMessagingSerializer.remoteMessageFromReadableMap(
+                          remoteMessageMap));
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
   public void subscribeToTopic(String topic, Promise promise) {
     FirebaseMessaging.getInstance()
-      .subscribeToTopic(topic)
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+        .subscribeToTopic(topic)
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @ReactMethod
   public void unsubscribeFromTopic(String topic, Promise promise) {
     FirebaseMessaging.getInstance()
-      .unsubscribeFromTopic(topic)
-      .addOnCompleteListener(task -> {
-        if (task.isSuccessful()) {
-          promise.resolve(task.getResult());
-        } else {
-          rejectPromiseWithExceptionMap(promise, task.getException());
-        }
-      });
+        .unsubscribeFromTopic(topic)
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(task.getResult());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
+  }
+
+  @ReactMethod
+  public void setDeliveryMetricsExportToBigQuery(Boolean enabled, Promise promise) {
+    Tasks.call(
+            getExecutor(),
+            () -> {
+              FirebaseMessaging.getInstance().setDeliveryMetricsExportToBigQuery(enabled);
+              return null;
+            })
+        .addOnCompleteListener(
+            task -> {
+              if (task.isSuccessful()) {
+                promise.resolve(
+                    FirebaseMessaging.getInstance().deliveryMetricsExportToBigQueryEnabled());
+              } else {
+                rejectPromiseWithExceptionMap(promise, task.getException());
+              }
+            });
   }
 
   @Override
   public Map<String, Object> getConstants() {
     final Map<String, Object> constants = new HashMap<>();
+    constants.put("isAutoInitEnabled", FirebaseMessaging.getInstance().isAutoInitEnabled());
     constants.put(
-      "isAutoInitEnabled",
-      FirebaseMessaging.getInstance().isAutoInitEnabled()
-    );
+        "isDeliveryMetricsExportToBigQueryEnabled",
+        FirebaseMessaging.getInstance().deliveryMetricsExportToBigQueryEnabled());
+    constants.put(
+        "isNotificationDelegationEnabled",
+        FirebaseMessaging.getInstance().isNotificationDelegationEnabled());
     return constants;
   }
 
@@ -216,17 +301,30 @@ public class ReactNativeFirebaseMessagingModule extends ReactNativeFirebaseModul
       if (messageId == null) messageId = intent.getExtras().getString("message_id");
 
       if (messageId != null) {
-        RemoteMessage remoteMessage = ReactNativeFirebaseMessagingReceiver.notifications.get(messageId);
+        RemoteMessage remoteMessage =
+            ReactNativeFirebaseMessagingReceiver.notifications.get(messageId);
+        WritableMap remoteMessageMap;
+
         if (remoteMessage == null) {
-          remoteMessage = popRemoteMessageFromMessagingStore(messageId);
+          remoteMessageMap = popRemoteMessageMapFromMessagingStore(messageId);
+        } else {
+          remoteMessageMap =
+              ReactNativeFirebaseMessagingSerializer.remoteMessageToWritableMap(remoteMessage);
         }
 
-        if (remoteMessage != null) {
-          initialNotification = remoteMessage;
+        if (remoteMessageMap != null) {
+          // WritableNativeMap not be consumed twice. But it is resolved in future and in event
+          // below. Make a copy - issue #5231
+          WritableNativeMap newInitialNotification = new WritableNativeMap();
+          newInitialNotification.merge(remoteMessageMap);
+          initialNotification = newInitialNotification;
           ReactNativeFirebaseMessagingReceiver.notifications.remove(messageId);
 
-          ReactNativeFirebaseEventEmitter emitter = ReactNativeFirebaseEventEmitter.getSharedInstance();
-          emitter.sendEvent(ReactNativeFirebaseMessagingSerializer.remoteMessageToEvent(remoteMessage, true));
+          ReactNativeFirebaseEventEmitter emitter =
+              ReactNativeFirebaseEventEmitter.getSharedInstance();
+          emitter.sendEvent(
+              ReactNativeFirebaseMessagingSerializer.remoteMessageMapToEvent(
+                  remoteMessageMap, true));
         }
       }
     }

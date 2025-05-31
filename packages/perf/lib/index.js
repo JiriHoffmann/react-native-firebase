@@ -21,8 +21,10 @@ import {
   FirebaseModule,
   getFirebaseRoot,
 } from '@react-native-firebase/app/lib/internal';
+import { Platform } from 'react-native';
 import HttpMetric from './HttpMetric';
 import Trace from './Trace';
+import ScreenTrace from './ScreenTrace';
 import version from './version';
 
 const statics = {};
@@ -47,17 +49,53 @@ class FirebasePerfModule extends FirebaseModule {
   constructor(...args) {
     super(...args);
     this._isPerformanceCollectionEnabled = this.native.isPerformanceCollectionEnabled;
+    this._instrumentationEnabled = this.native.isInstrumentationEnabled;
   }
 
   get isPerformanceCollectionEnabled() {
     return this._isPerformanceCollectionEnabled;
   }
 
-  setPerformanceCollectionEnabled(enabled) {
+  get instrumentationEnabled() {
+    return this._instrumentationEnabled;
+  }
+
+  set instrumentationEnabled(enabled) {
+    if (!isBoolean(enabled)) {
+      throw new Error("firebase.perf().instrumentationEnabled = 'enabled' must be a boolean.");
+    }
+    if (Platform.OS == 'ios') {
+      // We don't change for android as it cannot be set from code, it is set at gradle build time.
+      this._instrumentationEnabled = enabled;
+      // No need to await, as it only takes effect on the next app run.
+      this.native.instrumentationEnabled(enabled);
+    }
+  }
+
+  get dataCollectionEnabled() {
+    return this._isPerformanceCollectionEnabled;
+  }
+
+  set dataCollectionEnabled(enabled) {
+    if (!isBoolean(enabled)) {
+      throw new Error("firebase.perf().dataCollectionEnabled = 'enabled' must be a boolean.");
+    }
+    this._isPerformanceCollectionEnabled = enabled;
+    this.native.setPerformanceCollectionEnabled(enabled);
+  }
+
+  async setPerformanceCollectionEnabled(enabled) {
     if (!isBoolean(enabled)) {
       throw new Error(
         "firebase.perf().setPerformanceCollectionEnabled(*) 'enabled' must be a boolean.",
       );
+    }
+
+    if (Platform.OS == 'ios') {
+      // '_instrumentationEnabled' is updated here as well to maintain backward compatibility. See:
+      // https://github.com/invertase/react-native-firebase/commit/b705622e64d6ebf4ee026d50841e2404cf692f85
+      this._instrumentationEnabled = enabled;
+      await this.native.instrumentationEnabled(enabled);
     }
 
     this._isPerformanceCollectionEnabled = enabled;
@@ -78,6 +116,21 @@ class FirebasePerfModule extends FirebaseModule {
   startTrace(identifier) {
     const trace = this.newTrace(identifier);
     return trace.start().then(() => trace);
+  }
+
+  newScreenTrace(identifier) {
+    if (!isString(identifier) || identifier.length > 100) {
+      throw new Error(
+        "firebase.perf().newScreenTrace(*) 'identifier' must be a string with a maximum length of 100 characters.",
+      );
+    }
+
+    return new ScreenTrace(this.native, identifier);
+  }
+
+  startScreenTrace(identifier) {
+    const screenTrace = this.newScreenTrace(identifier);
+    return screenTrace.start().then(() => screenTrace);
   }
 
   newHttpMetric(url, httpMethod) {
@@ -112,6 +165,8 @@ export default createModuleNamespace({
   hasCustomUrlOrRegionSupport: false,
   ModuleClass: FirebasePerfModule,
 });
+
+export * from './modular';
 
 // import perf, { firebase } from '@react-native-firebase/perf';
 // perf().X(...);

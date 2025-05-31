@@ -17,6 +17,8 @@
  */
 
 #import "RNFBFirestoreSerialize.h"
+#import "RNFBFirestoreCommon.h"
+#import "RNFBPreferences.h"
 
 @implementation RNFBFirestoreSerialize
 
@@ -44,7 +46,7 @@ enum TYPE_MAP {
   INT_DOCUMENTID,
   INT_BOOLEAN_TRUE,
   INT_BOOLEAN_FALSE,
-  INT_NUMBER,
+  INT_DOUBLE,
   INT_STRING,
   INT_STRING_EMPTY,
   INT_ARRAY,
@@ -54,14 +56,17 @@ enum TYPE_MAP {
   INT_BLOB,
   INT_FIELDVALUE,
   INT_OBJECT,
+  INT_INTEGER,
+  INT_NEGATIVE_ZERO,
   INT_UNKNOWN = -999,
 };
 
 // Native QuerySnapshot -> NSDictionary (for JS)
-+ (NSDictionary *)querySnapshotToDictionary
-    :(NSString *)source
++ (NSDictionary *)querySnapshotToDictionary:(NSString *)source
                                    snapshot:(FIRQuerySnapshot *)snapshot
-                     includeMetadataChanges:(BOOL)includeMetadataChanges {
+                     includeMetadataChanges:(BOOL)includeMetadataChanges
+                                    appName:(NSString *)appName
+                                 databaseId:(NSString *)databaseId {
   NSMutableArray *metadata = [[NSMutableArray alloc] init];
   NSMutableDictionary *snapshotMap = [[NSMutableDictionary alloc] init];
 
@@ -78,48 +83,57 @@ enum TYPE_MAP {
     // indicating the data does not include these changes
     snapshotMap[@"excludesMetadataChanges"] = @(true);
     for (FIRDocumentChange *documentChange in documentChangesList) {
-      [changes addObject:[self documentChangeToDictionary:documentChange isMetadataChange:false]];
+      [changes addObject:[self documentChangeToDictionary:documentChange
+                                         isMetadataChange:false
+                                                  appName:appName
+                                               databaseId:databaseId]];
     }
   } else {
     // If listening to metadata changes, get the changes list with document changes array.
     // To indicate whether a document change was because of metadata change, we check whether
     // its in the raw list by document key.
     snapshotMap[@"excludesMetadataChanges"] = @(false);
-    NSArray *documentMetadataChangesList = [snapshot documentChangesWithIncludeMetadataChanges:true];
+    NSArray *documentMetadataChangesList =
+        [snapshot documentChangesWithIncludeMetadataChanges:true];
 
     for (FIRDocumentChange *documentMetadataChange in documentMetadataChangesList) {
       bool isMetadataChange = NO;
 
-      NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(FIRDocumentChange *docChange, NSDictionary *bindings) {
-        if (
-            [[[docChange document] documentID] isEqualToString:[[documentMetadataChange document] documentID]] &&
+      NSPredicate *predicate = [NSPredicate
+          predicateWithBlock:^BOOL(FIRDocumentChange *docChange, NSDictionary *bindings) {
+            if ([[[docChange document] documentID]
+                    isEqualToString:[[documentMetadataChange document] documentID]] &&
                 [docChange newIndex] == [documentMetadataChange newIndex] &&
                 [docChange oldIndex] == [documentMetadataChange oldIndex] &&
-                [docChange type] == [documentMetadataChange type]
-            ) {
-          return YES;
-        }
+                [docChange type] == [documentMetadataChange type]) {
+              return YES;
+            }
 
-        return NO;
-      }];
+            return NO;
+          }];
 
-      FIRDocumentChange *exists = [documentChangesList filteredArrayUsingPredicate:predicate].firstObject;
+      FIRDocumentChange *exists =
+          [documentChangesList filteredArrayUsingPredicate:predicate].firstObject;
 
       if (exists == nil) {
         isMetadataChange = YES;
       }
 
-      [changes addObject:[self documentChangeToDictionary:documentMetadataChange isMetadataChange:isMetadataChange]];
+      [changes addObject:[self documentChangeToDictionary:documentMetadataChange
+                                         isMetadataChange:isMetadataChange
+                                                  appName:appName
+                                               databaseId:databaseId]];
     }
   }
 
   snapshotMap[KEY_CHANGES] = changes;
-
-
-  //set documents
+  NSString *firestoreKey = [RNFBFirestoreCommon createFirestoreKeyWithAppName:appName
+                                                                   databaseId:databaseId];
+  // set documents
   NSMutableArray *documents = [[NSMutableArray alloc] init];
   for (FIRDocumentSnapshot *documentSnapshot in documentSnapshots) {
-    [documents addObject:[self documentSnapshotToDictionary:documentSnapshot]];
+    [documents addObject:[self documentSnapshotToDictionary:documentSnapshot
+                                               firestoreKey:firestoreKey]];
   }
   snapshotMap[KEY_DOCUMENTS] = documents;
 
@@ -132,9 +146,10 @@ enum TYPE_MAP {
   return snapshotMap;
 }
 
-+ (NSDictionary *)documentChangeToDictionary
-    :(FIRDocumentChange *)documentChange
-                            isMetadataChange:(BOOL)isMetadataChange {
++ (NSDictionary *)documentChangeToDictionary:(FIRDocumentChange *)documentChange
+                            isMetadataChange:(BOOL)isMetadataChange
+                                     appName:(NSString *)appName
+                                  databaseId:(NSString *)databaseId {
   NSMutableDictionary *changeMap = [[NSMutableDictionary alloc] init];
   changeMap[@"isMetadataChange"] = @(isMetadataChange);
 
@@ -145,19 +160,23 @@ enum TYPE_MAP {
   } else {
     changeMap[KEY_DOC_CHANGE_TYPE] = CHANGE_REMOVED;
   }
+  NSString *firestoreKey = [RNFBFirestoreCommon createFirestoreKeyWithAppName:appName
+                                                                   databaseId:databaseId];
+  changeMap[KEY_DOC_CHANGE_DOCUMENT] = [self documentSnapshotToDictionary:documentChange.document
+                                                             firestoreKey:firestoreKey];
 
-  changeMap[KEY_DOC_CHANGE_DOCUMENT] = [self documentSnapshotToDictionary:documentChange.document];
-
-  // Note the Firestore C++ SDK here returns a maxed UInt that is != NSUIntegerMax, so we make one ourselves so we can
-  // convert to -1 for JS land
-  NSUInteger MAX_VAL = (NSUInteger) [@(-1) integerValue];
-  if (documentChange.newIndex == NSNotFound || documentChange.newIndex == 4294967295 || documentChange.newIndex == MAX_VAL) {
+  // Note the Firestore C++ SDK here returns a maxed UInt that is != NSUIntegerMax, so we make one
+  // ourselves so we can convert to -1 for JS land
+  NSUInteger MAX_VAL = (NSUInteger)[@(-1) integerValue];
+  if (documentChange.newIndex == NSNotFound || documentChange.newIndex == 4294967295 ||
+      documentChange.newIndex == MAX_VAL) {
     changeMap[KEY_DOC_CHANGE_NEW_INDEX] = @([@(-1) doubleValue]);
   } else {
     changeMap[KEY_DOC_CHANGE_NEW_INDEX] = @([@(documentChange.newIndex) doubleValue]);
   }
 
-  if (documentChange.oldIndex == NSNotFound || documentChange.oldIndex == 4294967295 || documentChange.oldIndex == MAX_VAL) {
+  if (documentChange.oldIndex == NSNotFound || documentChange.oldIndex == 4294967295 ||
+      documentChange.oldIndex == MAX_VAL) {
     changeMap[KEY_DOC_CHANGE_OLD_INDEX] = @([@(-1) doubleValue]);
   } else {
     changeMap[KEY_DOC_CHANGE_OLD_INDEX] = @([@(documentChange.oldIndex) doubleValue]);
@@ -167,7 +186,8 @@ enum TYPE_MAP {
 }
 
 // Native DocumentSnapshot -> NSDictionary (for JS)
-+ (NSDictionary *)documentSnapshotToDictionary:(FIRDocumentSnapshot *)snapshot {
++ (NSDictionary *)documentSnapshotToDictionary:(FIRDocumentSnapshot *)snapshot
+                                  firestoreKey:(NSString *)firestoreKey {
   NSMutableArray *metadata = [[NSMutableArray alloc] init];
   NSMutableDictionary *documentMap = [[NSMutableDictionary alloc] init];
 
@@ -180,7 +200,22 @@ enum TYPE_MAP {
   documentMap[KEY_EXISTS] = @(snapshot.exists);
 
   if (snapshot.exists) {
-    documentMap[KEY_DATA] = [self serializeDictionary:snapshot.data];
+    NSString *key =
+        [NSString stringWithFormat:@"%@_%@", FIRESTORE_SERVER_TIMESTAMP_BEHAVIOR, firestoreKey];
+    NSString *behavior = [[RNFBPreferences shared] getStringValue:key defaultValue:@"none"];
+
+    FIRServerTimestampBehavior serverTimestampBehavior;
+
+    if ([behavior isEqualToString:@"estimate"]) {
+      serverTimestampBehavior = FIRServerTimestampBehaviorEstimate;
+    } else if ([behavior isEqualToString:@"previous"]) {
+      serverTimestampBehavior = FIRServerTimestampBehaviorPrevious;
+    } else {
+      serverTimestampBehavior = FIRServerTimestampBehaviorNone;
+    }
+
+    NSDictionary *data = [snapshot dataWithServerTimestampBehavior:serverTimestampBehavior];
+    documentMap[KEY_DATA] = [self serializeDictionary:data];
   }
 
   return documentMap;
@@ -190,9 +225,10 @@ enum TYPE_MAP {
 + (NSDictionary *)serializeDictionary:(NSDictionary *)dictionary {
   NSMutableDictionary *dictValues = [[NSMutableDictionary alloc] init];
 
-  [dictionary enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL *_Nonnull stop) {
-    dictValues[key] = [self buildTypeMap:obj];
-  }];
+  [dictionary
+      enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL *_Nonnull stop) {
+        dictValues[key] = [self buildTypeMap:obj];
+      }];
 
   return dictValues;
 }
@@ -245,7 +281,7 @@ enum TYPE_MAP {
   // DocumentReference
   if ([value isKindOfClass:[FIRDocumentReference class]]) {
     typeArray[0] = @(INT_REFERENCE);
-    FIRDocumentReference *ref = (FIRDocumentReference *) value;
+    FIRDocumentReference *ref = (FIRDocumentReference *)value;
     typeArray[1] = [ref path];
     return typeArray;
   }
@@ -254,7 +290,7 @@ enum TYPE_MAP {
   if ([value isKindOfClass:[FIRGeoPoint class]]) {
     typeArray[0] = @(INT_GEOPOINT);
     NSMutableArray *geoPointArray = [[NSMutableArray alloc] init];
-    FIRGeoPoint *geoPoint = (FIRGeoPoint *) value;
+    FIRGeoPoint *geoPoint = (FIRGeoPoint *)value;
     geoPointArray[0] = @([geoPoint latitude]);
     geoPointArray[1] = @([geoPoint longitude]);
     typeArray[1] = geoPointArray;
@@ -265,9 +301,9 @@ enum TYPE_MAP {
   if ([value isKindOfClass:[FIRTimestamp class]]) {
     typeArray[0] = @(INT_TIMESTAMP);
     NSMutableArray *timestampArray = [[NSMutableArray alloc] init];
-    FIRTimestamp *firTimestamp = (FIRTimestamp *) value;
-    int64_t seconds = (int64_t) firTimestamp.seconds;
-    int32_t nanoseconds = (int32_t) firTimestamp.nanoseconds;
+    FIRTimestamp *firTimestamp = (FIRTimestamp *)value;
+    int64_t seconds = (int64_t)firTimestamp.seconds;
+    int32_t nanoseconds = (int32_t)firTimestamp.nanoseconds;
     timestampArray[0] = @(seconds);
     timestampArray[1] = @(nanoseconds);
     typeArray[1] = timestampArray;
@@ -276,7 +312,7 @@ enum TYPE_MAP {
 
   // number / boolean / infinity / nan
   if ([value isKindOfClass:[NSNumber class]]) {
-    NSNumber *number = (NSNumber *) value;
+    NSNumber *number = (NSNumber *)value;
 
     // Infinity
     if ([number isEqual:@(INFINITY)]) {
@@ -291,13 +327,13 @@ enum TYPE_MAP {
     }
 
     // Boolean True
-    if (number == [NSValue valueWithPointer:(void *) kCFBooleanTrue]) {
+    if (number == [NSValue valueWithPointer:(void *)kCFBooleanTrue]) {
       typeArray[0] = @(INT_BOOLEAN_TRUE);
       return typeArray;
     }
 
     // Boolean False
-    if (number == [NSValue valueWithPointer:(void *) kCFBooleanFalse]) {
+    if (number == [NSValue valueWithPointer:(void *)kCFBooleanFalse]) {
       typeArray[0] = @(INT_BOOLEAN_FALSE);
       return typeArray;
     }
@@ -309,14 +345,14 @@ enum TYPE_MAP {
     }
 
     // Number
-    typeArray[0] = @(INT_NUMBER);
+    typeArray[0] = @(INT_DOUBLE);
     typeArray[1] = value;
     return typeArray;
   }
 
   // Blob / Base64
   if ([value isKindOfClass:[NSData class]]) {
-    NSData *blob = (NSData *) value;
+    NSData *blob = (NSData *)value;
     typeArray[0] = @(INT_BLOB);
     typeArray[1] = [blob base64EncodedStringWithOptions:0];
     return typeArray;
@@ -327,24 +363,22 @@ enum TYPE_MAP {
 }
 
 // Parses JS Object into Native Dict
-+ (NSDictionary *)parseNSDictionary
-    :(FIRFirestore *)firestore
++ (NSDictionary *)parseNSDictionary:(FIRFirestore *)firestore
                          dictionary:(NSDictionary *)dictionary {
   NSMutableDictionary *dictValues = [[NSMutableDictionary alloc] init];
 
   if (dictionary == nil) return dictValues;
 
-  [dictionary enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL *_Nonnull stop) {
-    dictValues[key] = [self parseTypeMap:firestore typeMap:obj];
-  }];
+  [dictionary
+      enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, id _Nonnull obj, BOOL *_Nonnull stop) {
+        dictValues[key] = [self parseTypeMap:firestore typeMap:obj];
+      }];
 
   return dictValues;
 }
 
 // Parses JS Array to Native Array
-+ (NSArray *)parseNSArray
-    :(FIRFirestore *)firestore
-                    array:(NSArray *)array {
++ (NSArray *)parseNSArray:(FIRFirestore *)firestore array:(NSArray *)array {
   NSMutableArray *arrayValues = [[NSMutableArray alloc] init];
 
   if (array == nil) return arrayValues;
@@ -357,9 +391,7 @@ enum TYPE_MAP {
 }
 
 // Converts a JS array [INT, value] to native value
-+ (id)parseTypeMap
-    :(FIRFirestore *)firestore
-           typeMap:(NSArray *)typeMap {
++ (id)parseTypeMap:(FIRFirestore *)firestore typeMap:(NSArray *)typeMap {
   NSInteger value = [typeMap[0] integerValue];
 
   switch (value) {
@@ -377,7 +409,11 @@ enum TYPE_MAP {
       return @(YES);
     case INT_BOOLEAN_FALSE:
       return @(NO);
-    case INT_NUMBER:
+    case INT_NEGATIVE_ZERO:
+      return @(-0.0);
+    case INT_INTEGER:
+      return @([typeMap[1] longLongValue]);
+    case INT_DOUBLE:
       return @([typeMap[1] doubleValue]);
     case INT_STRING:
       return typeMap[1];
@@ -389,7 +425,8 @@ enum TYPE_MAP {
       return [firestore documentWithPath:typeMap[1]];
     case INT_GEOPOINT: {
       NSArray *geopoint = typeMap[1];
-      return [[FIRGeoPoint alloc] initWithLatitude:[geopoint[0] doubleValue] longitude:[geopoint[1] doubleValue]];
+      return [[FIRGeoPoint alloc] initWithLatitude:[geopoint[0] doubleValue]
+                                         longitude:[geopoint[1] doubleValue]];
     }
     case INT_TIMESTAMP: {
       NSArray *timestamp = typeMap[1];

@@ -16,20 +16,26 @@
  *
  */
 
-#import <React/RCTBridgeModule.h>
 #import <Firebase/Firebase.h>
+#import <React/RCTBridgeModule.h>
 
 @interface RNFBFirestoreCommon : NSObject
 
 + (dispatch_queue_t)getFirestoreQueue;
 
-+ (FIRFirestore *)getFirestoreForApp:(FIRApp *)firebaseApp;
++ (FIRFirestore *)getFirestoreForApp:(FIRApp *)firebaseApp databaseId:(NSString *)databaseId;
 
-+ (void)setFirestoreSettings:(FIRFirestore *)firestore appName:(NSString *)appName;
++ (NSString *)createFirestoreKeyWithAppName:(NSString *)appName databaseId:(NSString *)databaseId;
+
++ (void)setFirestoreSettings:(FIRFirestore *)firestore
+                     appName:(NSString *)appName
+                  databaseId:(NSString *)databaseId;
 
 + (FIRDocumentReference *)getDocumentForFirestore:(FIRFirestore *)firestore path:(NSString *)path;
 
-+ (FIRQuery *)getQueryForFirestore:(FIRFirestore *)firestore path:(NSString *)path type:(NSString *)type;
++ (FIRQuery *)getQueryForFirestore:(FIRFirestore *)firestore
+                              path:(NSString *)path
+                              type:(NSString *)type;
 
 + (void)promiseRejectFirestoreException:(RCTPromiseRejectBlock)reject error:(NSError *)error;
 
@@ -41,4 +47,5 @@ extern NSString *const FIRESTORE_CACHE_SIZE;
 extern NSString *const FIRESTORE_HOST;
 extern NSString *const FIRESTORE_PERSISTENCE;
 extern NSString *const FIRESTORE_SSL;
-extern NSMutableDictionary * instanceCache;
+extern NSString *const FIRESTORE_SERVER_TIMESTAMP_BEHAVIOR;
+extern NSMutableDictionary *instanceCache;

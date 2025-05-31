@@ -15,7 +15,7 @@
  *
  */
 
-import { isString } from '@react-native-firebase/app/lib/common';
+import { isArray, isString } from '@react-native-firebase/app/lib/common';
 import FirestoreDocumentReference, {
   provideDocumentSnapshotClass,
 } from './FirestoreDocumentReference';
@@ -33,10 +33,6 @@ export default class FirestoreDocumentSnapshot {
     this._exists = nativeData.exists;
   }
 
-  get exists() {
-    return this._exists;
-  }
-
   get id() {
     return this._ref.id;
   }
@@ -47,6 +43,10 @@ export default class FirestoreDocumentSnapshot {
 
   get ref() {
     return this._ref;
+  }
+
+  exists() {
+    return this._exists;
   }
 
   data() {
@@ -78,9 +78,13 @@ export default class FirestoreDocumentSnapshot {
   get(fieldPath) {
     // TODO: ehesp: How are SnapshotOptions handled?
 
-    if (!isString(fieldPath) && !(fieldPath instanceof FirestoreFieldPath)) {
+    if (
+      !isString(fieldPath) &&
+      !(fieldPath instanceof FirestoreFieldPath) &&
+      !Array.isArray(fieldPath)
+    ) {
       throw new Error(
-        "firebase.firestore() DocumentSnapshot.get(*) 'fieldPath' expected type string or FieldPath.",
+        "firebase.firestore() DocumentSnapshot.get(*) 'fieldPath' expected type string, array or FieldPath.",
       );
     }
 
@@ -92,6 +96,8 @@ export default class FirestoreDocumentSnapshot {
       } catch (e) {
         throw new Error(`firebase.firestore() DocumentSnapshot.get(*) 'fieldPath' ${e.message}.`);
       }
+    } else if (isArray(fieldPath)) {
+      path = new FirestoreFieldPath(...fieldPath);
     } else {
       // Is already field path
       path = fieldPath;
@@ -108,7 +114,7 @@ export default class FirestoreDocumentSnapshot {
     }
 
     if (
-      this.exists !== other.exists ||
+      this.exists() !== other.exists() ||
       !this.metadata.isEqual(other.metadata) ||
       !this.ref.isEqual(other.ref)
     ) {

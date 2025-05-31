@@ -50,7 +50,7 @@ import { ReactNativeFirebase } from '@react-native-firebase/app';
 export namespace FirebaseCrashlyticsTypes {
   import FirebaseModule = ReactNativeFirebase.FirebaseModule;
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   export interface Statics {}
 
   /**
@@ -77,7 +77,7 @@ export namespace FirebaseCrashlyticsTypes {
      * ```
      *
      */
-    isCrashlyticsCollectionEnabled: true;
+    isCrashlyticsCollectionEnabled: boolean;
     /**
      * Determines whether there are any unsent crash reports cached on the device. The callback only executes
      * if automatic data collection is disabled.
@@ -126,6 +126,8 @@ export namespace FirebaseCrashlyticsTypes {
 
     /**
      * Cause your app to crash for testing purposes. This is a native crash and will not contain a javascript stack trace.
+     * Note that crashes are intercepted by debuggers on iOS so no report will be seen under those conditions. Additionally
+     * if it is a debug build you will need to ensure your firebase.json is configured to enable crashlytics even in debug mode.
      *
      * #### Example
      *
@@ -264,11 +266,12 @@ export const firebase: ReactNativeFirebase.Module & {
 
 export default defaultExport;
 
+export * from './modular';
+
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
     interface Module {

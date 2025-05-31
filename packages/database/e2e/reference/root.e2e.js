@@ -16,8 +16,29 @@
  */
 
 describe('database().ref().root', function () {
-  it('returns a root reference', function () {
-    const ref = firebase.database().ref('foo/bar/baz');
-    should.equal(ref.root.key, null);
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    it('returns a root reference', function () {
+      const ref = firebase.database().ref('foo/bar/baz');
+      should.equal(ref.root.key, null);
+    });
+  });
+
+  describe('modular', function () {
+    it('returns a root reference', function () {
+      const { getDatabase, ref } = databaseModular;
+
+      const dbRef = ref(getDatabase(), 'foo/bar/baz');
+      should.equal(dbRef.root.key, null);
+    });
   });
 });

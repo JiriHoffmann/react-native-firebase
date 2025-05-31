@@ -53,9 +53,10 @@ import { ReactNativeFirebase } from '@react-native-firebase/app';
  *
  * @firebase _template_
  */
-export namespace _Template_ {
+export namespace Firebase_Template_Types {
   import FirebaseModule = ReactNativeFirebase.FirebaseModule;
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-interface
   export interface Statics {
     // firebase._template_.* static props go here
   }
@@ -103,13 +104,15 @@ export namespace _Template_ {
 }
 
 declare const defaultExport: ReactNativeFirebase.FirebaseModuleWithStaticsAndApp<
-  _Template_.Module,
-  _Template_.Statics
+  Firebase_Template_Types.Module,
+  Firebase_Template_Types.Statics
 >;
 
 export const firebase: ReactNativeFirebase.Module & {
-  auth: typeof defaultExport;
-  app(name?: string): ReactNativeFirebase.FirebaseApp & { _template_(): _Template_.Module };
+  _template_: typeof defaultExport;
+  app(
+    name?: string,
+  ): ReactNativeFirebase.FirebaseApp & { _template_(): Firebase_Template_Types.Module };
 };
 
 export default defaultExport;
@@ -121,10 +124,13 @@ declare module '@react-native-firebase/app' {
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStaticsAndApp = ReactNativeFirebase.FirebaseModuleWithStaticsAndApp;
     interface Module {
-      _template_: FirebaseModuleWithStaticsAndApp<_Template_.Module, _Template_.Statics>;
+      _template_: FirebaseModuleWithStaticsAndApp<
+        Firebase_Template_Types.Module,
+        Firebase_Template_Types.Statics
+      >;
     }
     interface FirebaseApp {
-      _template_(): _Template_.Module;
+      _template_(): Firebase_Template_Types.Module;
     }
   }
 }

@@ -15,179 +15,520 @@
  *
  */
 
-describe('messaging().sendMessage(*)', function () {
-  it('throws if used on ios', function () {
-    if (device.getPlatform() === 'ios') {
-      try {
-        firebase.messaging().sendMessage(123);
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql(
-          'firebase.messaging().sendMessage() is only supported on Android devices.',
-        );
-        return Promise.resolve();
-      }
-    } else {
-      Promise.resolve();
-    }
-  });
-
-  android.it('throws if no object provided', () => {
-    try {
-      firebase.messaging().sendMessage(123);
-      return Promise.reject(new Error('Did not throw Error.'));
-    } catch (e) {
-      e.message.should.containEql("'remoteMessage' expected an object value");
-      return Promise.resolve();
-    }
-  });
-
-  android.it('uses default values', async () => {
-    firebase.messaging().sendMessage({});
-  });
-
-  android.describe('to', () => {
-    it('throws if to is not a string', function () {
-      try {
-        firebase.messaging().sendMessage({
-          to: 123,
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.to' expected a string value");
-        return Promise.resolve();
-      }
+describe('remoteMessage modular', function () {
+  describe('firebase v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
     });
 
-    it('accepts custom to value', async function () {
-      await firebase.messaging().sendMessage({
-        to: 'foobar',
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    describe('messaging().sendMessage(*)', function () {
+      it('throws if used on ios', function () {
+        if (Platform.ios) {
+          try {
+            firebase.messaging().sendMessage(123);
+            return Promise.reject(new Error('Did not throw Error.'));
+          } catch (e) {
+            e.message.should.containEql(
+              'firebase.messaging().sendMessage() is only supported on Android devices.',
+            );
+            return Promise.resolve();
+          }
+        } else {
+          Promise.resolve();
+        }
+      });
+
+      it('throws if no object provided', function () {
+        if (Platform.android) {
+          try {
+            firebase.messaging().sendMessage(123);
+            return Promise.reject(new Error('Did not throw Error.'));
+          } catch (e) {
+            e.message.should.containEql("'remoteMessage' expected an object value");
+            return Promise.resolve();
+          }
+        } else {
+          this.skip();
+        }
+      });
+
+      it('uses default values', async function () {
+        if (Platform.android) {
+          firebase.messaging().sendMessage({});
+        } else {
+          this.skip();
+        }
+      });
+
+      describe('to', function () {
+        it('throws if to is not a string', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                to: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.to' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom to value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              to: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('messageId', function () {
+        it('throws if messageId is not a string', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                messageId: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.messageId' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom messageId value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              messageId: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('ttl', function () {
+        it('throws if not a number', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                ttl: '123',
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("remoteMessage.ttl' expected a number value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('throws if negative number', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                ttl: -2,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('throws if float number', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                ttl: 123.4,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom ttl value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              ttl: 123,
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('data', function () {
+        it('throws if data not an object', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                data: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.data' expected an object value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom data value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              data: {
+                foo: 'bar',
+                fooObject: { image: 'testURL' },
+              },
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('collapseKey', function () {
+        it('throws if collapseKey is not a string', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                collapseKey: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.collapseKey' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom collapseKey value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              collapseKey: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('messageType', function () {
+        it('throws if messageType is not a string', function () {
+          if (Platform.android) {
+            try {
+              firebase.messaging().sendMessage({
+                messageType: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.messageType' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom messageType value', async function () {
+          if (Platform.android) {
+            await firebase.messaging().sendMessage({
+              messageType: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
       });
     });
   });
 
-  android.describe('messageId', () => {
-    it('throws if messageId is not a string', function () {
-      try {
-        firebase.messaging().sendMessage({
-          messageId: 123,
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.messageId' expected a string value");
-        return Promise.resolve();
-      }
-    });
-
-    it('accepts custom messageId value', async function () {
-      await firebase.messaging().sendMessage({
-        messageId: 'foobar',
+  describe('modular', function () {
+    describe('messaging().sendMessage(*)', function () {
+      it('throws if used on ios', function () {
+        const { getMessaging, sendMessage } = messagingModular;
+        if (Platform.ios) {
+          try {
+            sendMessage(getMessaging(), 123);
+            return Promise.reject(new Error('Did not throw Error.'));
+          } catch (e) {
+            e.message.should.containEql(
+              'firebase.messaging().sendMessage() is only supported on Android devices.',
+            );
+            return Promise.resolve();
+          }
+        } else {
+          Promise.resolve();
+        }
       });
-    });
-  });
 
-  android.describe('ttl', () => {
-    it('throws if not a number', function () {
-      try {
-        firebase.messaging().sendMessage({
-          ttl: '123',
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("remoteMessage.ttl' expected a number value");
-        return Promise.resolve();
-      }
-    });
-
-    it('throws if negative number', function () {
-      try {
-        firebase.messaging().sendMessage({
-          ttl: -2,
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
-        return Promise.resolve();
-      }
-    });
-
-    it('throws if float number', function () {
-      try {
-        firebase.messaging().sendMessage({
-          ttl: 123.4,
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
-        return Promise.resolve();
-      }
-    });
-
-    it('accepts custom ttl value', async function () {
-      await firebase.messaging().sendMessage({
-        ttl: 123,
+      it('throws if no object provided', function () {
+        const { getMessaging, sendMessage } = messagingModular;
+        if (Platform.android) {
+          try {
+            sendMessage(getMessaging(), 123);
+            return Promise.reject(new Error('Did not throw Error.'));
+          } catch (e) {
+            e.message.should.containEql("'remoteMessage' expected an object value");
+            return Promise.resolve();
+          }
+        } else {
+          this.skip();
+        }
       });
-    });
-  });
 
-  android.describe('data', () => {
-    it('throws if data not an object', function () {
-      try {
-        firebase.messaging().sendMessage({
-          data: 123,
-        });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.data' expected an object value");
-        return Promise.resolve();
-      }
-    });
-
-    it('accepts custom data value', async function () {
-      await firebase.messaging().sendMessage({
-        data: {
-          foo: 'bar',
-        },
+      it('uses default values', async function () {
+        const { getMessaging, sendMessage } = messagingModular;
+        if (Platform.android) {
+          sendMessage(getMessaging(), {});
+        } else {
+          this.skip();
+        }
       });
-    });
-  });
 
-  android.describe('collapseKey', () => {
-    it('throws if collapseKey is not a string', function () {
-      try {
-        firebase.messaging().sendMessage({
-          collapseKey: 123,
+      describe('to', function () {
+        it('throws if to is not a string', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                to: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.to' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
         });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.collapseKey' expected a string value");
-        return Promise.resolve();
-      }
-    });
 
-    it('accepts custom collapseKey value', async function () {
-      await firebase.messaging().sendMessage({
-        collapseKey: 'foobar',
+        it('accepts custom to value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              to: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
       });
-    });
-  });
 
-  android.describe('messageType', () => {
-    it('throws if messageType is not a string', function () {
-      try {
-        firebase.messaging().sendMessage({
-          messageType: 123,
+      describe('messageId', function () {
+        it('throws if messageId is not a string', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                messageId: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.messageId' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
         });
-        return Promise.reject(new Error('Did not throw Error.'));
-      } catch (e) {
-        e.message.should.containEql("'remoteMessage.messageType' expected a string value");
-        return Promise.resolve();
-      }
-    });
 
-    it('accepts custom messageType value', async function () {
-      await firebase.messaging().sendMessage({
-        messageType: 'foobar',
+        it('accepts custom messageId value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              messageId: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('ttl', function () {
+        it('throws if not a number', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                ttl: '123',
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("remoteMessage.ttl' expected a number value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('throws if negative number', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                ttl: -2,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('throws if float number', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                ttl: 123.4,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.ttl' expected a positive integer value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom ttl value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              ttl: 123,
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('data', function () {
+        it('throws if data not an object', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                data: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.data' expected an object value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom data value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              data: {
+                foo: 'bar',
+                fooObject: { image: 'testURL' },
+              },
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('collapseKey', function () {
+        it('throws if collapseKey is not a string', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                collapseKey: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.collapseKey' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom collapseKey value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              collapseKey: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
+      });
+
+      describe('messageType', function () {
+        it('throws if messageType is not a string', function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            try {
+              sendMessage(getMessaging(), {
+                messageType: 123,
+              });
+              return Promise.reject(new Error('Did not throw Error.'));
+            } catch (e) {
+              e.message.should.containEql("'remoteMessage.messageType' expected a string value");
+              return Promise.resolve();
+            }
+          } else {
+            this.skip();
+          }
+        });
+
+        it('accepts custom messageType value', async function () {
+          const { getMessaging, sendMessage } = messagingModular;
+          if (Platform.android) {
+            await sendMessage(getMessaging(), {
+              messageType: 'foobar',
+            });
+          } else {
+            this.skip();
+          }
+        });
       });
     });
   });

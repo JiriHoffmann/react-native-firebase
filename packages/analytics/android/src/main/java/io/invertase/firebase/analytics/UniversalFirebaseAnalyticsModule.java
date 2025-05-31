@@ -17,19 +17,17 @@ package io.invertase.firebase.analytics;
  *
  */
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
-
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.analytics.FirebaseAnalytics;
-
-import java.util.Set;
-
-import javax.annotation.Nullable;
-
+import com.google.firebase.analytics.FirebaseAnalytics.ConsentStatus;
+import com.google.firebase.analytics.FirebaseAnalytics.ConsentType;
 import io.invertase.firebase.common.UniversalFirebaseModule;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Set;
 
 @SuppressWarnings("WeakerAccess")
 public class UniversalFirebaseAnalyticsModule extends UniversalFirebaseModule {
@@ -39,57 +37,105 @@ public class UniversalFirebaseAnalyticsModule extends UniversalFirebaseModule {
   }
 
   Task<Void> logEvent(String name, Bundle parameters) {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).logEvent(name, parameters);
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).logEvent(name, parameters);
+          return null;
+        });
   }
 
   Task<Void> setAnalyticsCollectionEnabled(Boolean enabled) {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).setAnalyticsCollectionEnabled(enabled);
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).setAnalyticsCollectionEnabled(enabled);
+          return null;
+        });
   }
 
   Task<Void> setSessionTimeoutDuration(long milliseconds) {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).setSessionTimeoutDuration(milliseconds);
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).setSessionTimeoutDuration(milliseconds);
+          return null;
+        });
+  }
+
+  Task<String> getAppInstanceId() {
+    return FirebaseAnalytics.getInstance(getContext()).getAppInstanceId();
+  }
+
+  Task<Long> getSessionId() {
+    return FirebaseAnalytics.getInstance(getContext()).getSessionId();
   }
 
   Task<Void> setUserId(String id) {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).setUserId(id);
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).setUserId(id);
+          return null;
+        });
   }
 
   Task<Void> setUserProperty(String name, String value) {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).setUserProperty(name, value);
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).setUserProperty(name, value);
+          return null;
+        });
   }
 
   Task<Void> setUserProperties(Bundle properties) {
-    return Tasks.call(() -> {
-      Set<String> bundleKeys = properties.keySet();
-      FirebaseAnalytics firebaseAnalytics = FirebaseAnalytics.getInstance(getContext());
+    return Tasks.call(
+        () -> {
+          Set<String> bundleKeys = properties.keySet();
+          FirebaseAnalytics firebaseAnalytics = FirebaseAnalytics.getInstance(getContext());
 
-      for (String bundleKey : bundleKeys) {
-        firebaseAnalytics.setUserProperty(bundleKey, (String) properties.get(bundleKey));
-      }
+          for (String bundleKey : bundleKeys) {
+            firebaseAnalytics.setUserProperty(bundleKey, (String) properties.get(bundleKey));
+          }
 
-      return null;
-    });
+          return null;
+        });
   }
 
   Task<Void> resetAnalyticsData() {
-    return Tasks.call(() -> {
-      FirebaseAnalytics.getInstance(getContext()).resetAnalyticsData();
-      return null;
-    });
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).resetAnalyticsData();
+          return null;
+        });
+  }
+
+  Task<Void> setDefaultEventParameters(Bundle parameters) {
+    return Tasks.call(
+        () -> {
+          FirebaseAnalytics.getInstance(getContext()).setDefaultEventParameters(parameters);
+          return null;
+        });
+  }
+
+  Task<Void> setConsent(Bundle consentSettings) {
+    return Tasks.call(
+        () -> {
+          boolean analyticsStorage = consentSettings.getBoolean("analytics_storage");
+          boolean adStorage = consentSettings.getBoolean("ad_storage");
+          boolean adUserData = consentSettings.getBoolean("ad_user_data");
+          boolean adPersonalization = consentSettings.getBoolean("ad_personalization");
+
+          Map<ConsentType, ConsentStatus> consentMap = new EnumMap<>(ConsentType.class);
+          consentMap.put(
+              ConsentType.ANALYTICS_STORAGE,
+              analyticsStorage ? ConsentStatus.GRANTED : ConsentStatus.DENIED);
+          consentMap.put(
+              ConsentType.AD_STORAGE, adStorage ? ConsentStatus.GRANTED : ConsentStatus.DENIED);
+          consentMap.put(
+              ConsentType.AD_USER_DATA, adUserData ? ConsentStatus.GRANTED : ConsentStatus.DENIED);
+          consentMap.put(
+              ConsentType.AD_PERSONALIZATION,
+              adPersonalization ? ConsentStatus.GRANTED : ConsentStatus.DENIED);
+
+          FirebaseAnalytics.getInstance(getContext()).setConsent(consentMap);
+          return null;
+        });
   }
 }

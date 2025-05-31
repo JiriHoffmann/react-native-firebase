@@ -21,78 +21,161 @@ const TEST_PATH = `${PATH}/update`;
 
 describe('database().ref().update()', function () {
   after(async function () {
-    await firebase.database().ref(TEST_PATH).remove();
+    const { getDatabase, ref } = databaseModular;
+    await ref(getDatabase(), TEST_PATH).remove();
   });
 
-  it('throws if values is not an object', async function () {
-    try {
-      await firebase.database().ref(TEST_PATH).update('foo');
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'values' must be an object");
-      return Promise.resolve();
-    }
-  });
-
-  it('throws if values does not contain any values', async function () {
-    try {
-      await firebase.database().ref(TEST_PATH).update({});
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'values' must be an object containing multiple values");
-      return Promise.resolve();
-    }
-  });
-
-  it('throws if update paths are not valid', async function () {
-    try {
-      await firebase.database().ref(TEST_PATH).update({
-        $$$$: 'foo',
-      });
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'values' contains an invalid path.");
-      return Promise.resolve();
-    }
-  });
-
-  it('throws if onComplete is not a function', async function () {
-    try {
-      await firebase.database().ref(TEST_PATH).update(
-        {
-          foo: 'bar',
-        },
-        'foo',
-      );
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'onComplete' must be a function if provided");
-      return Promise.resolve();
-    }
-  });
-
-  it('updates values', async function () {
-    const value = Date.now();
-    const ref = firebase.database().ref(TEST_PATH);
-    await ref.update({
-      foo: value,
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
     });
-    const snapshot = await ref.once('value');
-    snapshot.val().should.eql(
-      jet.contextify({
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    it('throws if values is not an object', async function () {
+      try {
+        await firebase.database().ref(TEST_PATH).update('foo');
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'values' must be an object");
+        return Promise.resolve();
+      }
+    });
+
+    it('throws if update paths are not valid', async function () {
+      try {
+        await firebase.database().ref(TEST_PATH).update({
+          $$$$: 'foo',
+        });
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'values' contains an invalid path.");
+        return Promise.resolve();
+      }
+    });
+
+    it('throws if onComplete is not a function', async function () {
+      try {
+        await firebase.database().ref(TEST_PATH).update(
+          {
+            foo: 'bar',
+          },
+          'foo',
+        );
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'onComplete' must be a function if provided");
+        return Promise.resolve();
+      }
+    });
+
+    it('updates values', async function () {
+      const value = Date.now();
+      const ref = firebase.database().ref(TEST_PATH);
+      await ref.update({
         foo: value,
-      }),
-    );
+      });
+      const snapshot = await ref.once('value');
+      snapshot.val().should.eql(
+        jet.contextify({
+          foo: value,
+        }),
+      );
+
+      await ref.update({}); // empty update should pass, but no side effects
+      const snapshot2 = await ref.once('value');
+      snapshot2.val().should.eql(
+        jet.contextify({
+          foo: value,
+        }),
+      );
+    });
+
+    it('removes property if set to `null`', async function () {
+      const value = Date.now();
+      const ref = firebase.database().ref(TEST_PATH);
+      await ref.update({
+        foo: value,
+      });
+      const snapshot = await ref.once('value');
+      snapshot.val().should.eql(
+        jet.contextify({
+          foo: value,
+        }),
+      );
+      await ref.update({
+        foo: null,
+      });
+      const snapshot2 = await ref.once('value');
+      // Removes key/value
+      should(snapshot2.val()).be.null();
+    });
+
+    it('callback if function is passed', async function () {
+      const value = Date.now();
+      return new Promise(async resolve => {
+        await firebase.database().ref(TEST_PATH).update(
+          {
+            foo: value,
+          },
+          resolve,
+        );
+      });
+    });
   });
 
-  it('callback if function is passed', async function () {
-    const value = Date.now();
-    return new Promise(async resolve => {
-      await firebase.database().ref(TEST_PATH).update(
-        {
+  describe('modular', function () {
+    it('throws if values is not an object', async function () {
+      const { getDatabase, ref, update } = databaseModular;
+
+      try {
+        await update(ref(getDatabase(), TEST_PATH), 'foo');
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'values' must be an object");
+        return Promise.resolve();
+      }
+    });
+
+    it('throws if update paths are not valid', async function () {
+      const { getDatabase, ref, update } = databaseModular;
+
+      try {
+        await update(ref(getDatabase(), TEST_PATH), {
+          $$$$: 'foo',
+        });
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'values' contains an invalid path.");
+        return Promise.resolve();
+      }
+    });
+
+    it('updates values', async function () {
+      const { getDatabase, ref, update, get } = databaseModular;
+
+      const value = Date.now();
+      const dbRef = ref(getDatabase(), TEST_PATH);
+      await update(dbRef, {
+        foo: value,
+      });
+      const snapshot = await get(dbRef);
+      snapshot.val().should.eql(
+        jet.contextify({
           foo: value,
-        },
-        resolve,
+        }),
+      );
+
+      await update(dbRef, {}); // empty update should pass, but no side effects
+      const snapshot2 = await get(dbRef);
+      snapshot2.val().should.eql(
+        jet.contextify({
+          foo: value,
+        }),
       );
     });
   });

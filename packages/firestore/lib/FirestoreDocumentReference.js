@@ -15,7 +15,15 @@
  *
  */
 
-import { isObject, isString, isUndefined, isNull } from '@react-native-firebase/app/lib/common';
+import {
+  isObject,
+  isString,
+  isUndefined,
+  isNull,
+  createDeprecationProxy,
+  filterModularArgument,
+} from '@react-native-firebase/app/lib/common';
+
 import NativeError from '@react-native-firebase/app/lib/internal/NativeFirebaseError';
 import {
   parseSetOptions,
@@ -127,7 +135,10 @@ export default class FirestoreDocumentReference {
       );
     }
 
-    return this._firestore.native.documentGet(this.path, options).then(this._getConvertedSnapshot);
+    return this._firestore.native
+      .documentGet(this.path, options)
+      .then(this._getConvertedSnapshot)
+      .then(data => createDeprecationProxy(new FirestoreDocumentSnapshot(this._firestore, data)));
   }
 
   isEqual(other) {
@@ -178,7 +189,11 @@ export default class FirestoreDocumentReference {
         if (event.body.error) {
           handleError(NativeError.fromEvent(event.body.error, 'firestore'));
         } else {
-          handleSuccess(this._getConvertedSnapshot(event.body.snapshot));
+          const documentSnapshot = createDeprecationProxy(
+            new FirestoreDocumentSnapshot(this._firestore, this._getConvertedSnapshot(event.body.snapshot)),
+          );
+          handleSuccess(documentSnapshot);
+
         }
       },
     );
@@ -205,6 +220,7 @@ export default class FirestoreDocumentReference {
       throw new Error(`firebase.firestore().doc().set(_, *) ${e.message}.`);
     }
 
+
     let converted = data;
     if (this._converter) {
       try {
@@ -216,11 +232,17 @@ export default class FirestoreDocumentReference {
       }
     }
 
-    return this._firestore.native.documentSet(this.path, buildNativeMap(converted), setOptions);
+    return this._firestore.native.documentSet(
+      this.path,
+      buildNativeMap(converted, this._firestore._settings.ignoreUndefinedProperties),
+      setOptions,
+    );
+
   }
 
   update(...args) {
-    if (args.length === 0) {
+    const updatedArgs = filterModularArgument(args);
+    if (updatedArgs.length === 0) {
       throw new Error(
         'firebase.firestore().doc().update(*) expected at least 1 argument but was called with 0 arguments.',
       );
@@ -228,12 +250,15 @@ export default class FirestoreDocumentReference {
 
     let data;
     try {
-      data = parseUpdateArgs(args);
+      data = parseUpdateArgs(updatedArgs);
     } catch (e) {
       throw new Error(`firebase.firestore().doc().update(*) ${e.message}`);
     }
 
-    return this._firestore.native.documentUpdate(this.path, buildNativeMap(data));
+    return this._firestore.native.documentUpdate(
+      this.path,
+      buildNativeMap(data, this._firestore._settings.ignoreUndefinedProperties),
+    );
   }
 
   withConverter(converter) {

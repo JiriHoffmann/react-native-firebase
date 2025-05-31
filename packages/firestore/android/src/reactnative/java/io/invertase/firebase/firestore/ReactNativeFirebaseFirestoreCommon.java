@@ -17,26 +17,54 @@ package io.invertase.firebase.firestore;
  *
  */
 
-
-import com.facebook.react.bridge.Promise;
-import com.google.firebase.firestore.FirebaseFirestoreException;
-
 import static io.invertase.firebase.common.ReactNativeFirebaseModule.rejectPromiseWithCodeAndMessage;
 import static io.invertase.firebase.common.ReactNativeFirebaseModule.rejectPromiseWithExceptionMap;
+import static io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.createFirestoreKey;
+
+import com.facebook.react.bridge.Promise;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import io.invertase.firebase.common.UniversalFirebasePreferences;
 
 class ReactNativeFirebaseFirestoreCommon {
   static void rejectPromiseFirestoreException(Promise promise, Exception exception) {
     if (exception instanceof FirebaseFirestoreException) {
-      UniversalFirebaseFirestoreException universalException = new UniversalFirebaseFirestoreException((FirebaseFirestoreException) exception, exception.getCause());
-      rejectPromiseWithCodeAndMessage(promise, universalException.getCode(), universalException.getMessage());
-    } else if (exception.getCause() != null && exception.getCause() instanceof FirebaseFirestoreException) {
-      UniversalFirebaseFirestoreException universalException = new UniversalFirebaseFirestoreException(
-        (FirebaseFirestoreException) exception.getCause(),
-        exception.getCause().getCause() != null ? exception.getCause().getCause() : exception.getCause()
-      );
-      rejectPromiseWithCodeAndMessage(promise, universalException.getCode(), universalException.getMessage());
+      UniversalFirebaseFirestoreException universalException =
+          new UniversalFirebaseFirestoreException(
+              (FirebaseFirestoreException) exception, exception.getCause());
+      rejectPromiseWithCodeAndMessage(
+          promise, universalException.getCode(), universalException.getMessage());
+    } else if (exception.getCause() != null
+        && exception.getCause() instanceof FirebaseFirestoreException) {
+      UniversalFirebaseFirestoreException universalException =
+          new UniversalFirebaseFirestoreException(
+              (FirebaseFirestoreException) exception.getCause(),
+              exception.getCause().getCause() != null
+                  ? exception.getCause().getCause()
+                  : exception.getCause());
+      rejectPromiseWithCodeAndMessage(
+          promise, universalException.getCode(), universalException.getMessage());
     } else {
       rejectPromiseWithExceptionMap(promise, exception);
     }
+  }
+
+  static DocumentSnapshot.ServerTimestampBehavior getServerTimestampBehavior(
+      String appName, String databaseId) {
+    String firestoreKey = createFirestoreKey(appName, databaseId);
+    UniversalFirebasePreferences preferences = UniversalFirebasePreferences.getSharedInstance();
+    String key =
+        UniversalFirebaseFirestoreStatics.FIRESTORE_SERVER_TIMESTAMP_BEHAVIOR + "_" + firestoreKey;
+    String behavior = preferences.getStringValue(key, "none");
+
+    if ("estimate".equals(behavior)) {
+      return DocumentSnapshot.ServerTimestampBehavior.ESTIMATE;
+    }
+
+    if ("previous".equals(behavior)) {
+      return DocumentSnapshot.ServerTimestampBehavior.PREVIOUS;
+    }
+
+    return DocumentSnapshot.ServerTimestampBehavior.NONE;
   }
 }

@@ -7,7 +7,6 @@ import com.facebook.react.bridge.WritableMap;
 import com.google.firebase.messaging.RemoteMessage;
 import io.invertase.firebase.common.ReactNativeFirebaseEvent;
 import io.invertase.firebase.common.SharedUtils;
-
 import java.util.Map;
 import java.util.Set;
 
@@ -22,6 +21,8 @@ public class ReactNativeFirebaseMessagingSerializer {
   private static final String KEY_ERROR = "error";
   private static final String KEY_TO = "to";
   private static final String KEY_TTL = "ttl";
+  private static final String KEY_PRIORITY = "priority";
+  private static final String KEY_ORIGINAL_PRIORITY = "originalPriority";
   private static final String EVENT_MESSAGE_SENT = "messaging_message_sent";
   private static final String EVENT_MESSAGES_DELETED = "messaging_message_deleted";
   private static final String EVENT_MESSAGE_RECEIVED = "messaging_message_received";
@@ -39,15 +40,25 @@ public class ReactNativeFirebaseMessagingSerializer {
     return new ReactNativeFirebaseEvent(EVENT_MESSAGE_SENT, eventBody);
   }
 
-  public static ReactNativeFirebaseEvent messageSendErrorToEvent(String messageId, Exception sendError) {
+  public static ReactNativeFirebaseEvent messageSendErrorToEvent(
+      String messageId, Exception sendError) {
     WritableMap eventBody = Arguments.createMap();
     eventBody.putString(KEY_MESSAGE_ID, messageId);
     eventBody.putMap(KEY_ERROR, SharedUtils.getExceptionMap(sendError));
     return new ReactNativeFirebaseEvent(EVENT_MESSAGE_SEND_ERROR, eventBody);
   }
 
-  public static ReactNativeFirebaseEvent remoteMessageToEvent(RemoteMessage remoteMessage, Boolean openEvent) {
-    return new ReactNativeFirebaseEvent(openEvent ? EVENT_NOTIFICATION_OPENED : EVENT_MESSAGE_RECEIVED, remoteMessageToWritableMap(remoteMessage));
+  public static ReactNativeFirebaseEvent remoteMessageToEvent(
+      RemoteMessage remoteMessage, Boolean openEvent) {
+    return new ReactNativeFirebaseEvent(
+        openEvent ? EVENT_NOTIFICATION_OPENED : EVENT_MESSAGE_RECEIVED,
+        remoteMessageToWritableMap(remoteMessage));
+  }
+
+  public static ReactNativeFirebaseEvent remoteMessageMapToEvent(
+      WritableMap remoteMessageMap, Boolean openEvent) {
+    return new ReactNativeFirebaseEvent(
+        openEvent ? EVENT_NOTIFICATION_OPENED : EVENT_MESSAGE_RECEIVED, remoteMessageMap);
   }
 
   public static ReactNativeFirebaseEvent newTokenToTokenEvent(String newToken) {
@@ -90,15 +101,19 @@ public class ReactNativeFirebaseMessagingSerializer {
     messageMap.putMap(KEY_DATA, dataMap);
     messageMap.putDouble(KEY_TTL, remoteMessage.getTtl());
     messageMap.putDouble(KEY_SENT_TIME, remoteMessage.getSentTime());
+    messageMap.putInt(KEY_PRIORITY, remoteMessage.getPriority());
+    messageMap.putInt(KEY_ORIGINAL_PRIORITY, remoteMessage.getOriginalPriority());
 
     if (remoteMessage.getNotification() != null) {
-      messageMap.putMap("notification", remoteMessageNotificationToWritableMap(remoteMessage.getNotification()));
+      messageMap.putMap(
+          "notification", remoteMessageNotificationToWritableMap(remoteMessage.getNotification()));
     }
 
     return messageMap;
   }
 
-  static WritableMap remoteMessageNotificationToWritableMap(RemoteMessage.Notification notification) {
+  static WritableMap remoteMessageNotificationToWritableMap(
+      RemoteMessage.Notification notification) {
     WritableMap notificationMap = Arguments.createMap();
     WritableMap androidNotificationMap = Arguments.createMap();
 
@@ -111,7 +126,8 @@ public class ReactNativeFirebaseMessagingSerializer {
     }
 
     if (notification.getTitleLocalizationArgs() != null) {
-      notificationMap.putArray("titleLocArgs", Arguments.fromJavaArgs(notification.getTitleLocalizationArgs()));
+      notificationMap.putArray(
+          "titleLocArgs", Arguments.fromJavaArgs(notification.getTitleLocalizationArgs()));
     }
 
     if (notification.getBody() != null) {
@@ -123,7 +139,8 @@ public class ReactNativeFirebaseMessagingSerializer {
     }
 
     if (notification.getBodyLocalizationArgs() != null) {
-      notificationMap.putArray("bodyLocArgs", Arguments.fromJavaArgs(notification.getBodyLocalizationArgs()));
+      notificationMap.putArray(
+          "bodyLocArgs", Arguments.fromJavaArgs(notification.getBodyLocalizationArgs()));
     }
 
     if (notification.getChannelId() != null) {
@@ -205,5 +222,4 @@ public class ReactNativeFirebaseMessagingSerializer {
 
     return builder.build();
   }
-
 }

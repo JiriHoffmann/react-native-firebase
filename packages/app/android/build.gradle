@@ -1,4 +1,5 @@
 import io.invertase.gradle.common.PackageJson
+import org.gradle.internal.jvm.Jvm
 
 buildscript {
   // The Android Gradle plugin is only required when opening the android folder stand-alone.
@@ -7,11 +8,11 @@ buildscript {
   if (project == rootProject) {
     repositories {
       google()
-      jcenter()
+      mavenCentral()
     }
 
     dependencies {
-      classpath("com.android.tools.build:gradle:4.1.3")
+      classpath("com.android.tools.build:gradle:8.4.0")
     }
   }
 }
@@ -26,7 +27,6 @@ def playServicesAuthVersion = packageJson['sdkVersions']['android']['playService
 def jsonMinSdk = packageJson['sdkVersions']['android']['minSdk']
 def jsonTargetSdk = packageJson['sdkVersions']['android']['targetSdk']
 def jsonCompileSdk = packageJson['sdkVersions']['android']['compileSdk']
-def jsonBuildTools = packageJson['sdkVersions']['android']['buildTools']
 
 project.ext {
   set('react-native', [
@@ -35,9 +35,6 @@ project.ext {
         minSdk    : jsonMinSdk,
         targetSdk : jsonTargetSdk,
         compileSdk: jsonCompileSdk,
-        // optional as gradle.buildTools comes with one by default
-        // overriding here though to match the version RN uses
-        buildTools: jsonBuildTools
       ],
 
       firebase: [
@@ -51,17 +48,44 @@ project.ext {
   ])
 }
 
-android {
-  defaultConfig {
-    multiDexEnabled true
+apply from: file('./firebase-json.gradle')
+
+// If data collection isn't specifically disabled, default is enabled
+String dataCollectionDefaultEnabled = 'true'
+
+if (rootProject.ext && rootProject.ext.firebaseJson) {
+  if (rootProject.ext.firebaseJson.isFlagEnabled('app_data_collection_default_enabled', true) == false) {
+    dataCollectionDefaultEnabled = 'false'
   }
+}
+
+android {
+  def agpVersion = com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION.tokenize('.')[0].toInteger()
+  if (agpVersion >= 7) {
+    namespace = 'io.invertase.firebase'
+  }
+
+  defaultConfig {
+    multiDexEnabled = true
+    manifestPlaceholders = [
+      firebaseJsonDataCollectionDefaultEnabled: dataCollectionDefaultEnabled
+    ]
+  }
+
+  buildFeatures {
+    // AGP 8 no longer builds config by default
+    buildConfig = true
+  }
+
   lintOptions {
     disable 'GradleCompatible'
-    abortOnError false
+    abortOnError = false
   }
-  compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+  if (agpVersion < 8) {
+    compileOptions {
+      sourceCompatibility = JavaVersion.VERSION_11
+      targetCompatibility = JavaVersion.VERSION_11
+    }
   }
 
   sourceSets {
@@ -73,7 +97,7 @@ android {
 
 repositories {
   google()
-  jcenter()
+  mavenCentral()
 }
 
 dependencies {
@@ -82,7 +106,21 @@ dependencies {
   implementation "com.google.android.gms:play-services-auth:${ReactNative.ext.getVersion("play", "play-services-auth")}"
 }
 
-apply from: file("./firebase-json.gradle")
+def jvmVersion = Jvm.current().javaVersion?.majorVersion
+// if it cannot get version, just allow it to pass. This is just a helper for developers
+if ((jvmVersion?.toInteger() ?: 17) < 17) {
+  println("\n\n\n")
+  println("**************************************************************************************************************")
+  println("\n\n\n")
+  println("ERROR: React Native Firebase builds with a minimum JVM version 17. We test with JVM 17 and 21.")
+  println("  Incompatible major version detected: '" + jvmVersion + "'")
+  println("\n\n\n")
+  println("  If you receive this error because you want to use a different JDK, we may accept PRs to support new versions.")
+  println("\n\n\n")
+  println("**************************************************************************************************************")
+  println("\n\n\n")
+  System.exit(1)
+}
 
 ReactNative.shared.applyPackageVersion()
 ReactNative.shared.applyDefaultExcludes()

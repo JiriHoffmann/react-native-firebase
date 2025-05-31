@@ -69,7 +69,8 @@ export const setGlobalErrorHandler = once(nativeModule => {
   const originalHandler = ErrorUtils.getGlobalHandler();
 
   async function handler(error, fatal) {
-    if (__DEV__) {
+    // If collection is disabled, just forward to the original handler
+    if (!nativeModule.isCrashlyticsCollectionEnabled) {
       return originalHandler(error, fatal);
     }
 
@@ -78,11 +79,10 @@ export const setGlobalErrorHandler = once(nativeModule => {
       return originalHandler(error, fatal);
     }
 
+    // If we are supposed to log javascript-level stack traces, convert this error and log it
     if (nativeModule.isErrorGenerationOnJSCrashEnabled) {
       try {
         const stackFrames = await StackTrace.fromError(error, { offline: true });
-        await nativeModule.recordErrorPromise(createNativeErrorObj(error, stackFrames, false));
-
         // The backend conversion scan converts the closest event to this timestamp without going over
         // from the timestamp here. So the timestamp *must* be greater then the event log time.
         //
@@ -94,8 +94,19 @@ export const setGlobalErrorHandler = once(nativeModule => {
         // Flag the Crashlytics backend that we have a fatal error, they will transform it
         await nativeModule.setAttribute(FATAL_FLAG, fatalTime);
 
+        // remember our current deprecation warning state in case users
+        // have set it to non-default
+        const currentDeprecationWarningToggle =
+          globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS;
+
         // Notify analytics, if it exists - throws error if not
         try {
+          // FIXME - disable warnings and use the old namespaced style,
+          // See https://github.com/invertase/react-native-firebase/issues/8381
+          // Unfortunately, this fails completely when using modular!
+          // Did not matter if I did named imports above or dynamic require here.
+          // So temporarily reverting and silencing warnings instead
+          globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
           await firebase.app().analytics().logEvent(
             'app_exception', // 'app_exception' is reserved but we make an exception for JS->fatal transforms
             {
@@ -103,16 +114,29 @@ export const setGlobalErrorHandler = once(nativeModule => {
               timestamp: fatalTime,
             },
           );
-        } catch (e) {
+        } catch (_) {
           // This just means analytics was not present, so we could not log the analytics event
           // console.log('error logging analytics app_exception: ' + e);
+        } finally {
+          globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = currentDeprecationWarningToggle;
         }
-      } catch (e) {
+
+        // If we are chaining to other handlers, just record the error, otherwise we need to crash with it
+        if (nativeModule.isCrashlyticsJavascriptExceptionHandlerChainingEnabled) {
+          await nativeModule.recordErrorPromise(createNativeErrorObj(error, stackFrames, false));
+        } else {
+          await nativeModule.crashWithStackPromise(createNativeErrorObj(error, stackFrames, false));
+        }
+      } catch (_) {
         // do nothing
         // console.log('error logging handling the exception: ' + e);
       }
     }
-    return originalHandler(error, fatal);
+
+    // If we are configured to chain exception handlers, do so. It could result in duplicate errors though.
+    if (nativeModule.isCrashlyticsJavascriptExceptionHandlerChainingEnabled) {
+      return originalHandler(error, fatal);
+    }
   }
 
   ErrorUtils.setGlobalHandler(handler);
@@ -120,7 +144,7 @@ export const setGlobalErrorHandler = once(nativeModule => {
 });
 
 export const setOnUnhandledPromiseRejectionHandler = once(nativeModule => {
-  async function onUnhandled(id, error) {
+  async function onUnhandled(_id, error) {
     if (!__DEV__) {
       // TODO(salakar): Option to disable
       try {

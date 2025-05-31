@@ -20,48 +20,130 @@ const { PATH, wipe } = require('./helpers');
 const TEST_PATH = `${PATH}/statics`;
 
 describe('database.X', function () {
-  after(function () {
-    return wipe(TEST_PATH);
-  });
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
 
-  describe('ServerValue.TIMESTAMP', function () {
-    it('returns a valid object', function () {
-      const { TIMESTAMP } = firebase.database.ServerValue;
-      should.equal(Object.keys(TIMESTAMP).length, 1);
-      TIMESTAMP.should.have.property('.sv');
-      TIMESTAMP['.sv'].should.eql('timestamp');
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    after(function () {
+      return wipe(TEST_PATH);
+    });
+
+    describe('ServerValue.TIMESTAMP', function () {
+      it('returns a valid object', function () {
+        const { TIMESTAMP } = firebase.database.ServerValue;
+        should.equal(Object.keys(TIMESTAMP).length, 1);
+        TIMESTAMP.should.have.property('.sv');
+        TIMESTAMP['.sv'].should.eql('timestamp');
+      });
+
+      it('populates the property with a Unix timestamp', async function () {
+        const ref = firebase.database().ref(`${TEST_PATH}/timestamp`);
+        await ref.set(firebase.database.ServerValue.TIMESTAMP);
+        const snapshot = await ref.once('value');
+        snapshot.val().should.be.a.Number();
+      });
+    });
+
+    describe('ServerValue.increment', function () {
+      it('returns a valid object', function () {
+        const incrementObject = firebase.database.ServerValue.increment(1);
+        should.equal(Object.keys(incrementObject).length, 1);
+        incrementObject.should.have.property('.sv');
+        incrementObject['.sv'].should.have.property('increment');
+      });
+
+      it('increments on the server', async function () {
+        const ref = firebase.database().ref(`${TEST_PATH}/increment`);
+
+        await ref.set({ increment: 0 });
+
+        const res1 = await ref.once('value');
+        res1.val().increment.should.equal(0);
+
+        await ref.set({ increment: firebase.database.ServerValue.increment(1) });
+
+        const res2 = await ref.once('value');
+        res2.val().increment.should.equal(1);
+      });
+
+      it('increments on the server when no value is present', async function () {
+        const ref = firebase.database().ref(`${TEST_PATH}/increment-empty`);
+
+        await ref.set({ increment: firebase.database.ServerValue.increment(2) });
+
+        const res = await ref.once('value');
+        res.val().increment.should.equal(2);
+      });
     });
   });
 
-  describe('ServerValue.increment', function () {
-    it('returns a valid object', function () {
-      const incrementObject = firebase.database.ServerValue.increment(1);
-      should.equal(Object.keys(incrementObject).length, 1);
-      incrementObject.should.have.property('.sv');
-      incrementObject['.sv'].should.have.property('increment');
+  describe('modular', function () {
+    after(function () {
+      return wipe(TEST_PATH);
     });
 
-    it('increments on the server', async function () {
-      const ref = firebase.database().ref(`${TEST_PATH}/increment`);
+    describe('serverTimestamp', function () {
+      it('returns a valid object', function () {
+        const { serverTimestamp } = databaseModular;
+        const timestamp = serverTimestamp();
 
-      await ref.set({ increment: 0 });
+        should.equal(Object.keys(timestamp).length, 1);
+        timestamp.should.have.property('.sv');
+        timestamp['.sv'].should.eql('timestamp');
+      });
 
-      const res1 = await ref.once('value');
-      res1.val().increment.should.equal(0);
-
-      await ref.set({ increment: firebase.database.ServerValue.increment(1) });
-
-      const res2 = await ref.once('value');
-      res2.val().increment.should.equal(1);
+      it('populates the property with a Unix timestamp', async function () {
+        const { serverTimestamp, getDatabase, ref, set } = databaseModular;
+        const dbRef = ref(getDatabase(), `${TEST_PATH}/timestamp`);
+        await set(dbRef, serverTimestamp());
+        const snapshot = await dbRef.once('value');
+        snapshot.val().should.be.a.Number();
+      });
     });
 
-    it('increments on the server when no value is present', async function () {
-      const ref = firebase.database().ref(`${TEST_PATH}/increment-empty`);
+    describe('increment', function () {
+      it('returns a valid object', function () {
+        const { increment } = databaseModular;
 
-      await ref.set({ increment: firebase.database.ServerValue.increment(2) });
+        const incrementObject = increment(1);
+        should.equal(Object.keys(incrementObject).length, 1);
+        incrementObject.should.have.property('.sv');
+        incrementObject['.sv'].should.have.property('increment');
+      });
 
-      const res = await ref.once('value');
-      res.val().increment.should.equal(2);
+      it('increments on the server', async function () {
+        const { getDatabase, ref, set, get, increment } = databaseModular;
+
+        const dbRef = ref(getDatabase(), `${TEST_PATH}/increment`);
+
+        await set(dbRef, { increment: 0 });
+
+        const res1 = await get(dbRef);
+        res1.val().increment.should.equal(0);
+
+        await set(dbRef, { increment: increment(1) });
+
+        const res2 = await get(dbRef);
+        res2.val().increment.should.equal(1);
+      });
+
+      it('increments on the server when no value is present', async function () {
+        const { getDatabase, ref, set, get, increment } = databaseModular;
+
+        const dbRef = ref(getDatabase(), `${TEST_PATH}/increment-empty`);
+
+        await set(dbRef, { increment: increment(2) });
+
+        const res = await get(dbRef);
+        res.val().increment.should.equal(2);
+      });
     });
   });
 });

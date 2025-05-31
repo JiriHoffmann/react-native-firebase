@@ -15,12 +15,20 @@
  *
  */
 
-import { isString } from '@react-native-firebase/app/lib/common';
+import { isString, createDeprecationProxy } from '../../common';
 import FirebaseApp from '../../FirebaseApp';
 import SDK_VERSION from '../../version';
 import { DEFAULT_APP_NAME, KNOWN_NAMESPACES } from '../constants';
 import FirebaseModule from '../FirebaseModule';
-import { getApp, getApps, initializeApp, setOnAppCreate, setOnAppDestroy } from './app';
+import {
+  getApp,
+  getApps,
+  initializeApp,
+  setLogLevel,
+  setReactNativeAsyncStorage,
+  setOnAppCreate,
+  setOnAppDestroy,
+} from './app';
 
 // firebase.X
 let FIREBASE_ROOT = null;
@@ -71,9 +79,8 @@ function getOrCreateModuleForApp(app, moduleNamespace) {
     MODULE_GETTER_FOR_APP[app.name] = {};
   }
 
-  const { hasCustomUrlOrRegionSupport, hasMultiAppSupport, ModuleClass } = NAMESPACE_REGISTRY[
-    moduleNamespace
-  ];
+  const { hasCustomUrlOrRegionSupport, hasMultiAppSupport, ModuleClass } =
+    NAMESPACE_REGISTRY[moduleNamespace];
 
   // modules such as analytics only run on the default app
   if (!hasMultiAppSupport && app.name !== DEFAULT_APP_NAME) {
@@ -86,30 +93,32 @@ function getOrCreateModuleForApp(app, moduleNamespace) {
     );
   }
 
-  // e.g. firebase.storage(customUrlOrRegion)
-  function firebaseModuleWithArgs(customUrlOrRegion) {
-    if (customUrlOrRegion !== undefined) {
+  // e.g. firebase.storage(customUrlOrRegion), firebase.functions(customUrlOrRegion), firebase.firestore(databaseId), firebase.database(url)
+  function firebaseModuleWithArgs(customUrlOrRegionOrDatabaseId) {
+    if (customUrlOrRegionOrDatabaseId !== undefined) {
       if (!hasCustomUrlOrRegionSupport) {
         // TODO throw Module does not support arguments error
       }
 
-      if (!isString(customUrlOrRegion)) {
+      if (!isString(customUrlOrRegionOrDatabaseId)) {
         // TODO throw Module first argument must be a string error
       }
     }
 
-    const key = customUrlOrRegion ? `${customUrlOrRegion}:${moduleNamespace}` : moduleNamespace;
+    const key = customUrlOrRegionOrDatabaseId
+      ? `${customUrlOrRegionOrDatabaseId}:${moduleNamespace}`
+      : moduleNamespace;
 
     if (!APP_MODULE_INSTANCE[app.name]) {
       APP_MODULE_INSTANCE[app.name] = {};
     }
 
     if (!APP_MODULE_INSTANCE[app.name][key]) {
-      APP_MODULE_INSTANCE[app.name][key] = new ModuleClass(
-        app,
-        NAMESPACE_REGISTRY[moduleNamespace],
-        customUrlOrRegion,
+      const module = createDeprecationProxy(
+        new ModuleClass(app, NAMESPACE_REGISTRY[moduleNamespace], customUrlOrRegionOrDatabaseId),
       );
+
+      APP_MODULE_INSTANCE[app.name][key] = module;
     }
 
     return APP_MODULE_INSTANCE[app.name][key];
@@ -161,18 +170,19 @@ function getOrCreateModuleForRoot(moduleNamespace) {
     }
 
     if (!APP_MODULE_INSTANCE[_app.name][moduleNamespace]) {
-      APP_MODULE_INSTANCE[_app.name][moduleNamespace] = new ModuleClass(
-        _app,
-        NAMESPACE_REGISTRY[moduleNamespace],
+      const module = createDeprecationProxy(
+        new ModuleClass(_app, NAMESPACE_REGISTRY[moduleNamespace]),
       );
+      APP_MODULE_INSTANCE[_app.name][moduleNamespace] = module;
     }
 
     return APP_MODULE_INSTANCE[_app.name][moduleNamespace];
   }
 
   Object.assign(firebaseModuleWithApp, statics || {});
-  Object.freeze(firebaseModuleWithApp);
-  MODULE_GETTER_FOR_ROOT[moduleNamespace] = firebaseModuleWithApp;
+  // Object.freeze(firebaseModuleWithApp);
+  // Wrap around statics, e.g. firebase.firestore.FieldValue, removed freeze as it stops proxy working. it is deprecated anyway
+  MODULE_GETTER_FOR_ROOT[moduleNamespace] = createDeprecationProxy(firebaseModuleWithApp);
 
   return MODULE_GETTER_FOR_ROOT[moduleNamespace];
 }
@@ -183,16 +193,21 @@ function getOrCreateModuleForRoot(moduleNamespace) {
  * @param moduleNamespace
  * @returns {*}
  */
-function firebaseRootModuleProxy(firebaseNamespace, moduleNamespace) {
+function firebaseRootModuleProxy(_firebaseNamespace, moduleNamespace) {
   if (NAMESPACE_REGISTRY[moduleNamespace]) {
     return getOrCreateModuleForRoot(moduleNamespace);
   }
+
+  moduleWithDashes = moduleNamespace
+    .split(/(?=[A-Z])/)
+    .join('-')
+    .toLowerCase();
 
   throw new Error(
     [
       `You attempted to use 'firebase.${moduleNamespace}' but this module could not be found.`,
       '',
-      `Ensure you have installed and imported the '@react-native-firebase/${moduleNamespace}' package.`,
+      `Ensure you have installed and imported the '@react-native-firebase/${moduleWithDashes}' package.`,
     ].join('\r\n'),
   );
 }
@@ -209,11 +224,16 @@ export function firebaseAppModuleProxy(app, moduleNamespace) {
     return getOrCreateModuleForApp(app, moduleNamespace);
   }
 
+  moduleWithDashes = moduleNamespace
+    .split(/(?=[A-Z])/)
+    .join('-')
+    .toLowerCase();
+
   throw new Error(
     [
       `You attempted to use "firebase.app('${app.name}').${moduleNamespace}" but this module could not be found.`,
       '',
-      `Ensure you have installed and imported the '@react-native-firebase/${moduleNamespace}' package.`,
+      `Ensure you have installed and imported the '@react-native-firebase/${moduleWithDashes}' package.`,
     ].join('\r\n'),
   );
 }
@@ -225,6 +245,7 @@ export function firebaseAppModuleProxy(app, moduleNamespace) {
 export function createFirebaseRoot() {
   FIREBASE_ROOT = {
     initializeApp,
+    setReactNativeAsyncStorage,
     get app() {
       return getApp;
     },
@@ -232,6 +253,7 @@ export function createFirebaseRoot() {
       return getApps();
     },
     SDK_VERSION,
+    setLogLevel,
   };
 
   for (let i = 0; i < KNOWN_NAMESPACES.length; i++) {

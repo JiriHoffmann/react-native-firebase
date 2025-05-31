@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -33,25 +33,29 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>com.invertase.testing</string>
+			<string>Firebase Deep Links</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>invertase</string>
+				<string>reactnativefirebase.page.link</string>
 			</array>
 		</dict>
 		<dict/>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>200</string>
 	<key>FirebaseDynamicLinksCustomDomains</key>
 	<array>
-		<string>https://invertase.io/hire-us</string>
+		<string>https://invertase.io/developers</string>
+		<string>https://invertase.io/contact</string>
+		<string>https://invertase.io/blog</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
@@ -66,7 +70,7 @@
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

@@ -15,14 +15,13 @@
  *
  */
 
-#import <React/RCTUtils.h>
 #import <RNFBApp/RNFBRCTEventEmitter.h>
+#import <React/RCTUtils.h>
 
 #import "RNFBFirestoreTransactionModule.h"
 
 static __strong NSMutableDictionary *transactions;
 static NSString *const RNFB_FIRESTORE_TRANSACTION_EVENT = @"firestore_transaction_event";
-
 
 @implementation RNFBFirestoreTransactionModule
 #pragma mark -
@@ -60,14 +59,14 @@ RCT_EXPORT_MODULE();
 #pragma mark -
 #pragma mark Firebase Firestore Methods
 
-RCT_EXPORT_METHOD(transactionGetDocument:
-  (FIRApp *) firebaseApp
-    :(nonnull NSNumber *)transactionId
-    :(NSString *)path
-    :(RCTPromiseResolveBlock)resolve
-    :(RCTPromiseRejectBlock)reject
-) {
-  @synchronized (transactions[[transactionId stringValue]]) {
+RCT_EXPORT_METHOD(transactionGetDocument
+                  : (FIRApp *)firebaseApp
+                  : (NSString *)databaseId
+                  : (nonnull NSNumber *)transactionId
+                  : (NSString *)path
+                  : (RCTPromiseResolveBlock)resolve
+                  : (RCTPromiseRejectBlock)reject) {
+  @synchronized(transactions[[transactionId stringValue]]) {
     NSMutableDictionary *transactionState = transactions[[transactionId stringValue]];
 
     if (!transactionState) {
@@ -77,14 +76,19 @@ RCT_EXPORT_METHOD(transactionGetDocument:
 
     NSError *error = nil;
     FIRTransaction *transaction = [transactionState valueForKey:@"transaction"];
-    FIRFirestore *firestore = [RNFBFirestoreCommon getFirestoreForApp:firebaseApp];
+    FIRFirestore *firestore = [RNFBFirestoreCommon getFirestoreForApp:firebaseApp
+                                                           databaseId:databaseId];
     FIRDocumentReference *ref = [RNFBFirestoreCommon getDocumentForFirestore:firestore path:path];
     FIRDocumentSnapshot *snapshot = [transaction getDocument:ref error:&error];
 
     if (error != nil) {
       [RNFBFirestoreCommon promiseRejectFirestoreException:reject error:error];
     } else {
-      NSDictionary *snapshotDict = [RNFBFirestoreSerialize documentSnapshotToDictionary:snapshot];
+      NSString *appName = [RNFBSharedUtils getAppJavaScriptName:firebaseApp.name];
+      NSString *firestoreKey = [RNFBFirestoreCommon createFirestoreKeyWithAppName:appName
+                                                                       databaseId:databaseId];
+      NSDictionary *snapshotDict =
+          [RNFBFirestoreSerialize documentSnapshotToDictionary:snapshot firestoreKey:firestoreKey];
       NSString *snapshotPath = snapshotDict[@"path"];
 
       if (snapshotPath == nil) {
@@ -96,11 +100,11 @@ RCT_EXPORT_METHOD(transactionGetDocument:
   }
 }
 
-RCT_EXPORT_METHOD(transactionDispose:
-  (FIRApp *) firebaseApp
-    :(nonnull NSNumber *)transactionId
-) {
-  @synchronized (transactions[[transactionId stringValue]]) {
+RCT_EXPORT_METHOD(transactionDispose
+                  : (FIRApp *)firebaseApp
+                  : (NSString *)databaseId
+                  : (nonnull NSNumber *)transactionId) {
+  @synchronized(transactions[[transactionId stringValue]]) {
     NSMutableDictionary *transactionState = transactions[[transactionId stringValue]];
 
     if (!transactionState) {
@@ -113,12 +117,12 @@ RCT_EXPORT_METHOD(transactionDispose:
   }
 }
 
-RCT_EXPORT_METHOD(transactionApplyBuffer:
-  (FIRApp *) firebaseApp
-    :(nonnull NSNumber *)transactionId
-    :(NSArray *)commandBuffer
-) {
-  @synchronized (transactions[[transactionId stringValue]]) {
+RCT_EXPORT_METHOD(transactionApplyBuffer
+                  : (FIRApp *)firebaseApp
+                  : (NSString *)databaseId
+                  : (nonnull NSNumber *)transactionId
+                  : (NSArray *)commandBuffer) {
+  @synchronized(transactions[[transactionId stringValue]]) {
     NSMutableDictionary *transactionState = transactions[[transactionId stringValue]];
 
     if (!transactionState) {
@@ -132,18 +136,19 @@ RCT_EXPORT_METHOD(transactionApplyBuffer:
   }
 }
 
-RCT_EXPORT_METHOD(transactionBegin:
-  (FIRApp *) firebaseApp
-    :(nonnull NSNumber *)transactionId
-) {
-  FIRFirestore *firestore = [RNFBFirestoreCommon getFirestoreForApp:firebaseApp];
+RCT_EXPORT_METHOD(transactionBegin
+                  : (FIRApp *)firebaseApp
+                  : (NSString *)databaseId
+                  : (nonnull NSNumber *)transactionId) {
+  FIRFirestore *firestore = [RNFBFirestoreCommon getFirestoreForApp:firebaseApp
+                                                         databaseId:databaseId];
   __block BOOL aborted = false;
   __block NSMutableDictionary *transactionState = [NSMutableDictionary new];
 
   id transactionBlock = ^id(FIRTransaction *transaction, NSError **errorPointer) {
     dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
-    @synchronized (transactionState) {
+    @synchronized(transactionState) {
       transactionState[@"semaphore"] = semaphore;
       transactionState[@"transaction"] = transaction;
 
@@ -155,34 +160,42 @@ RCT_EXPORT_METHOD(transactionBegin:
       dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSMutableDictionary *eventMap = [NSMutableDictionary new];
         eventMap[@"type"] = @"update";
-        [[RNFBRCTEventEmitter shared] sendEventWithName:RNFB_FIRESTORE_TRANSACTION_EVENT body:@{
-            @"listenerId": transactionId,
-            @"appName": [RNFBSharedUtils getAppJavaScriptName:firebaseApp.name],
-            @"body": eventMap,
-        }];
+        [[RNFBRCTEventEmitter shared]
+            sendEventWithName:RNFB_FIRESTORE_TRANSACTION_EVENT
+                         body:@{
+                           @"listenerId" : transactionId,
+                           @"appName" : [RNFBSharedUtils getAppJavaScriptName:firebaseApp.name],
+                           @"databaseId" : databaseId,
+                           @"body" : eventMap,
+                         }];
       });
     }
 
     // wait for the js event handler to call transactionApplyBuffer
     // this wait occurs on the RNFirestore Worker Queue so if transactionApplyBuffer fails to
-    // signal the semaphore then no further blocks will be executed by RNFirestore until the timeout expires
+    // signal the semaphore then no further blocks will be executed by RNFirestore until the timeout
+    // expires
     dispatch_time_t delayTime = dispatch_time(DISPATCH_TIME_NOW, 15 * NSEC_PER_SEC);
     BOOL timedOut = dispatch_semaphore_wait(semaphore, delayTime) != 0;
 
-    @synchronized (transactionState) {
-      aborted = (BOOL) transactionState[@"aborted"];
-      
+    @synchronized(transactionState) {
+      aborted = (BOOL)transactionState[@"aborted"];
+
       if (transactionState[@"semaphore"] != semaphore) {
         return nil;
       }
 
       if (aborted == YES) {
-        *errorPointer = [NSError errorWithDomain:FIRFirestoreErrorDomain code:FIRFirestoreErrorCodeAborted userInfo:@{}];
+        *errorPointer = [NSError errorWithDomain:FIRFirestoreErrorDomain
+                                            code:FIRFirestoreErrorCodeAborted
+                                        userInfo:@{}];
         return nil;
       }
 
       if (timedOut == YES) {
-        *errorPointer = [NSError errorWithDomain:FIRFirestoreErrorDomain code:FIRFirestoreErrorCodeDeadlineExceeded userInfo:@{}];
+        *errorPointer = [NSError errorWithDomain:FIRFirestoreErrorDomain
+                                            code:FIRFirestoreErrorCodeDeadlineExceeded
+                                        userInfo:@{}];
         return nil;
       }
 
@@ -191,13 +204,15 @@ RCT_EXPORT_METHOD(transactionBegin:
       for (NSDictionary *command in commandBuffer) {
         NSString *type = command[@"type"];
         NSString *path = command[@"path"];
-        FIRDocumentReference *documentReference = [RNFBFirestoreCommon getDocumentForFirestore:firestore path:path];
+        FIRDocumentReference *documentReference =
+            [RNFBFirestoreCommon getDocumentForFirestore:firestore path:path];
 
         if ([type isEqualToString:@"DELETE"]) {
           [transaction deleteDocument:documentReference];
         } else if ([type isEqualToString:@"SET"]) {
           NSDictionary *options = command[@"options"];
-          NSDictionary *parsedData = [RNFBFirestoreSerialize parseNSDictionary:firestore dictionary:command[@"data"]];
+          NSDictionary *parsedData = [RNFBFirestoreSerialize parseNSDictionary:firestore
+                                                                    dictionary:command[@"data"]];
 
           if (options[@"merge"]) {
             [transaction setData:parsedData forDocument:documentReference merge:true];
@@ -208,7 +223,8 @@ RCT_EXPORT_METHOD(transactionBegin:
             [transaction setData:parsedData forDocument:documentReference];
           }
         } else if ([type isEqualToString:@"UPDATE"]) {
-          NSDictionary *parsedData = [RNFBFirestoreSerialize parseNSDictionary:firestore dictionary:command[@"data"]];
+          NSDictionary *parsedData = [RNFBFirestoreSerialize parseNSDictionary:firestore
+                                                                    dictionary:command[@"data"]];
           [transaction updateData:parsedData forDocument:documentReference];
         }
       }
@@ -218,7 +234,7 @@ RCT_EXPORT_METHOD(transactionBegin:
   };
 
   id completionBlock = ^(id result, NSError *error) {
-    @synchronized (transactionState) {
+    @synchronized(transactionState) {
       if (aborted == NO) {
         NSMutableDictionary *eventMap = [NSMutableDictionary new];
 
@@ -226,18 +242,21 @@ RCT_EXPORT_METHOD(transactionBegin:
           NSArray *codeAndMessage = [RNFBFirestoreCommon getCodeAndMessage:error];
           eventMap[@"type"] = @"error";
           eventMap[@"error"] = @{
-              @"code": codeAndMessage[0],
-              @"message": codeAndMessage[1],
+            @"code" : codeAndMessage[0],
+            @"message" : codeAndMessage[1],
           };
         } else {
           eventMap[@"type"] = @"complete";
         }
 
-        [[RNFBRCTEventEmitter shared] sendEventWithName:RNFB_FIRESTORE_TRANSACTION_EVENT body:@{
-            @"listenerId": transactionId,
-            @"appName": [RNFBSharedUtils getAppJavaScriptName:firebaseApp.name],
-            @"body": eventMap,
-        }];
+        [[RNFBRCTEventEmitter shared]
+            sendEventWithName:RNFB_FIRESTORE_TRANSACTION_EVENT
+                         body:@{
+                           @"listenerId" : transactionId,
+                           @"appName" : [RNFBSharedUtils getAppJavaScriptName:firebaseApp.name],
+                           @"databaseId" : databaseId,
+                           @"body" : eventMap,
+                         }];
       }
 
       [transactions removeObjectForKey:[transactionId stringValue]];

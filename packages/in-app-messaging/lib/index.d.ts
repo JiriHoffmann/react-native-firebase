@@ -56,7 +56,7 @@ import { ReactNativeFirebase } from '@react-native-firebase/app';
 export namespace FirebaseInAppMessagingTypes {
   import FirebaseModule = ReactNativeFirebase.FirebaseModule;
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   export interface Statics {}
 
   /**
@@ -161,11 +161,12 @@ export const firebase: ReactNativeFirebase.Module & {
 
 export default defaultExport;
 
+export * from './modular';
+
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
     interface Module {

@@ -55,7 +55,10 @@ import { ReactNativeFirebase } from '@react-native-firebase/app';
  */
 export namespace FirebaseRemoteConfigTypes {
   import FirebaseModule = ReactNativeFirebase.FirebaseModule;
-
+  /**
+   * Defines levels of Remote Config logging. Web only.
+   */
+  export declare type RemoteConfigLogLevel = 'debug' | 'error' | 'silent';
   /**
    * A pseudo-enum for usage with ConfigSettingsRead.lastFetchStatus to determine the last fetch status.
    *
@@ -252,7 +255,7 @@ export namespace FirebaseRemoteConfigTypes {
    *
    * ```js
    * await firebase.remoteConfig().setConfigSettings({
-   *    fetchTimeoutMillis: 6000,
+   *    fetchTimeMillis: 6000,
    * });
    * ```
    */
@@ -284,6 +287,11 @@ export namespace FirebaseRemoteConfigTypes {
   }
 
   /**
+   * The status of the latest Remote RemoteConfig fetch action.
+   */
+  type LastFetchStatusType = 'success' | 'failure' | 'no_fetch_yet' | 'throttled';
+
+  /**
    * The Firebase Remote RemoteConfig service interface.
    *
    * > This module is available for the default app only.
@@ -306,7 +314,7 @@ export namespace FirebaseRemoteConfigTypes {
      *
      * See the `LastFetchStatus` statics definition.
      */
-    lastFetchStatus: 'success' | 'failure' | 'no_fetch_yet' | 'throttled';
+    lastFetchStatus: LastFetchStatusType;
 
     /**
      * Provides an object which provides the properties `minimumFetchIntervalMillis` & `fetchTimeMillis` if they have been set
@@ -314,7 +322,12 @@ export namespace FirebaseRemoteConfigTypes {
      * can be found above
      *
      */
-    settings: { fetchTimeMillis: number; minimumFetchIntervalMillis: number };
+    settings: ConfigSettings;
+
+    /**
+     * Provides an object with the type ConfigDefaults for default configuration values
+     */
+    defaultConfig: ConfigDefaults;
 
     /**
      * Set the Remote RemoteConfig settings, currently able to set `fetchTimeMillis` & `minimumFetchIntervalMillis`
@@ -362,6 +375,17 @@ export namespace FirebaseRemoteConfigTypes {
      * @param resourceName The plist/xml file name with no extension.
      */
     setDefaultsFromResource(resourceName: string): Promise<null>;
+
+    /**
+     * Start listening for real-time config updates from the Remote Config backend and
+     * automatically fetch updates when they’re available. Note that the list of updated keys
+     * passed to the callback will include all keys not currently active, and the config update
+     * process fetches the new config but does not automatically activate for you. Typically
+     * you will want to activate the config in your callback so the new values are in force.
+     *
+     * @param listener called with either array of updated keys or error arg when config changes
+     */
+    onConfigUpdated(listener: CallbackOrObserver<OnConfigUpdatedListenerCallback>): () => void;
 
     /**
      * Moves fetched data to the apps active config.
@@ -530,13 +554,25 @@ export const firebase: ReactNativeFirebase.Module & {
   ): ReactNativeFirebase.FirebaseApp & { remoteConfig(): FirebaseRemoteConfigTypes.Module };
 };
 
+type CallbackOrObserver<T extends (...args: any[]) => any> = T | { next: T };
+
+type OnConfigUpdatedListenerCallback = (
+  event?: { updatedKeys: string[] },
+  error?: {
+    code: string;
+    message: string;
+    nativeErrorMessage: string;
+  },
+) => void;
+
 export default defaultExport;
+
+export * from './modular';
 
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
     interface Module {

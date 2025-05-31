@@ -23,7 +23,9 @@ import {
   isString,
   isUndefined,
   isAndroid,
+  createDeprecationProxy,
 } from '@react-native-firebase/app/lib/common';
+import { setReactNativeModule } from '@react-native-firebase/app/lib/internal/nativeModule';
 import {
   createModuleNamespace,
   FirebaseModule,
@@ -38,6 +40,8 @@ import FirestoreStatics from './FirestoreStatics';
 import FirestoreTransactionHandler from './FirestoreTransactionHandler';
 import FirestoreWriteBatch from './FirestoreWriteBatch';
 import version from './version';
+import fallBackModule from './web/RNFBFirestoreModule';
+import FirestorePersistentCacheIndexManager from './FirestorePersistentCacheIndexManager';
 
 const namespace = 'firestore';
 
@@ -55,8 +59,13 @@ const nativeEvents = [
 ];
 
 class FirebaseFirestoreModule extends FirebaseModule {
-  constructor(app, config) {
+  constructor(app, config, databaseId) {
     super(app, config);
+    if (isString(databaseId) || databaseId === undefined) {
+      this._customUrlOrRegion = databaseId || '(default)';
+    } else if (!isString(databaseId)) {
+      throw new Error('firebase.app().firestore(*) database ID must be a string');
+    }
     this._referencePath = new FirestorePath();
     this._transactionHandler = new FirestoreTransactionHandler(this);
 
@@ -74,10 +83,43 @@ class FirebaseFirestoreModule extends FirebaseModule {
         event,
       );
     });
+
+    this._settings = {
+      ignoreUndefinedProperties: false,
+      persistence: true,
+    };
+  }
+  // We override the FirebaseModule's `eventNameForApp()` method to include the customUrlOrRegion
+  eventNameForApp(...args) {
+    return `${this.app.name}-${this._customUrlOrRegion}-${args.join('-')}`;
   }
 
   batch() {
     return new FirestoreWriteBatch(this);
+  }
+
+  loadBundle(bundle) {
+    if (!isString(bundle)) {
+      throw new Error("firebase.firestore().loadBundle(*) 'bundle' must be a string value.");
+    }
+
+    if (bundle === '') {
+      throw new Error("firebase.firestore().loadBundle(*) 'bundle' must be a non-empty string.");
+    }
+
+    return this.native.loadBundle(bundle);
+  }
+
+  namedQuery(queryName) {
+    if (!isString(queryName)) {
+      throw new Error("firebase.firestore().namedQuery(*) 'queryName' must be a string value.");
+    }
+
+    if (queryName === '') {
+      throw new Error("firebase.firestore().namedQuery(*) 'queryName' must be a non-empty string.");
+    }
+
+    return new FirestoreQuery(this, this._referencePath, new FirestoreQueryModifiers(), queryName);
   }
 
   async clearPersistence() {
@@ -90,6 +132,27 @@ class FirebaseFirestoreModule extends FirebaseModule {
 
   async terminate() {
     await this.native.terminate();
+  }
+
+  useEmulator(host, port) {
+    if (!host || !isString(host) || !port || !isNumber(port)) {
+      throw new Error('firebase.firestore().useEmulator() takes a non-empty host and port');
+    }
+    let _host = host;
+    const androidBypassEmulatorUrlRemap =
+      typeof this.firebaseJson.android_bypass_emulator_url_remap === 'boolean' &&
+      this.firebaseJson.android_bypass_emulator_url_remap;
+    if (!androidBypassEmulatorUrlRemap && isAndroid && _host) {
+      if (_host === 'localhost' || _host === '127.0.0.1') {
+        _host = '10.0.2.2';
+        // eslint-disable-next-line no-console
+        console.log(
+          'Mapping firestore host to "10.0.2.2" for android emulators. Use real IP on real devices. You can bypass this behaviour with "android_bypass_emulator_url_remap" flag.',
+        );
+      }
+    }
+    this.native.useEmulator(_host, port);
+    return [_host, port]; // undocumented return, just used to unit test android host remapping
   }
 
   collection(collectionPath) {
@@ -113,7 +176,7 @@ class FirebaseFirestoreModule extends FirebaseModule {
       );
     }
 
-    return new FirestoreCollectionReference(this, path);
+    return createDeprecationProxy(new FirestoreCollectionReference(this, path));
   }
 
   collectionGroup(collectionId) {
@@ -135,10 +198,13 @@ class FirebaseFirestoreModule extends FirebaseModule {
       );
     }
 
-    return new FirestoreQuery(
-      this,
-      this._referencePath.child(collectionId),
-      new FirestoreQueryModifiers().asCollectionGroupQuery(),
+    return createDeprecationProxy(
+      new FirestoreQuery(
+        this,
+        this._referencePath.child(collectionId),
+        new FirestoreQueryModifiers().asCollectionGroupQuery(),
+        undefined,
+      ),
     );
   }
 
@@ -161,7 +227,7 @@ class FirebaseFirestoreModule extends FirebaseModule {
       throw new Error("firebase.firestore().doc(*) 'documentPath' must point to a document.");
     }
 
-    return new FirestoreDocumentReference(this, path);
+    return createDeprecationProxy(new FirestoreDocumentReference(this, path));
   }
 
   async enableNetwork() {
@@ -170,8 +236,8 @@ class FirebaseFirestoreModule extends FirebaseModule {
 
   runTransaction(updateFunction) {
     if (!isFunction(updateFunction)) {
-      throw new Error(
-        "firebase.firestore().runTransaction(*) 'updateFunction' must be a function.",
+      return Promise.reject(
+        new Error("firebase.firestore().runTransaction(*) 'updateFunction' must be a function."),
       );
     }
 
@@ -180,26 +246,39 @@ class FirebaseFirestoreModule extends FirebaseModule {
 
   settings(settings) {
     if (!isObject(settings)) {
-      throw new Error("firebase.firestore().settings(*) 'settings' must be an object.");
+      return Promise.reject(
+        new Error("firebase.firestore().settings(*) 'settings' must be an object."),
+      );
     }
 
     const keys = Object.keys(settings);
 
-    const opts = ['cacheSizeBytes', 'host', 'persistence', 'ssl'];
+    const opts = [
+      'cacheSizeBytes',
+      'host',
+      'persistence',
+      'ssl',
+      'ignoreUndefinedProperties',
+      'serverTimestampBehavior',
+    ];
 
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       if (!opts.includes(key)) {
-        throw new Error(
-          `firebase.firestore().settings(*) 'settings.${key}' is not a valid settings field.`,
+        return Promise.reject(
+          new Error(
+            `firebase.firestore().settings(*) 'settings.${key}' is not a valid settings field.`,
+          ),
         );
       }
     }
 
     if (!isUndefined(settings.cacheSizeBytes)) {
       if (!isNumber(settings.cacheSizeBytes)) {
-        throw new Error(
-          "firebase.firestore().settings(*) 'settings.cacheSizeBytes' must be a number value.",
+        return Promise.reject(
+          new Error(
+            "firebase.firestore().settings(*) 'settings.cacheSizeBytes' must be a number value.",
+          ),
         );
       }
 
@@ -207,20 +286,30 @@ class FirebaseFirestoreModule extends FirebaseModule {
         settings.cacheSizeBytes !== FirestoreStatics.CACHE_SIZE_UNLIMITED &&
         settings.cacheSizeBytes < 1048576 // 1MB
       ) {
-        throw new Error(
-          "firebase.firestore().settings(*) 'settings.cacheSizeBytes' the minimum cache size is 1048576 bytes (1MB).",
+        return Promise.reject(
+          new Error(
+            "firebase.firestore().settings(*) 'settings.cacheSizeBytes' the minimum cache size is 1048576 bytes (1MB).",
+          ),
         );
       }
     }
 
     if (!isUndefined(settings.host)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        'host in settings to connect with firestore emulator is deprecated. Use useEmulator instead.',
+      );
       if (!isString(settings.host)) {
-        throw new Error("firebase.firestore().settings(*) 'settings.host' must be a string value.");
+        return Promise.reject(
+          new Error("firebase.firestore().settings(*) 'settings.host' must be a string value."),
+        );
       }
 
       if (settings.host === '') {
-        throw new Error(
-          "firebase.firestore().settings(*) 'settings.host' must not be an empty string.",
+        return Promise.reject(
+          new Error(
+            "firebase.firestore().settings(*) 'settings.host' must not be an empty string.",
+          ),
         );
       }
 
@@ -243,8 +332,10 @@ class FirebaseFirestoreModule extends FirebaseModule {
     }
 
     if (!isUndefined(settings.persistence) && !isBoolean(settings.persistence)) {
-      throw new Error(
-        "firebase.firestore().settings(*) 'settings.persistence' must be a boolean value.",
+      return Promise.reject(
+        new Error(
+          "firebase.firestore().settings(*) 'settings.persistence' must be a boolean value.",
+        ),
       );
     }
 
@@ -252,12 +343,51 @@ class FirebaseFirestoreModule extends FirebaseModule {
       throw new Error("firebase.firestore().settings(*) 'settings.ssl' must be a boolean value.");
     }
 
+    if (
+      !isUndefined(settings.serverTimestampBehavior) &&
+      !['estimate', 'previous', 'none'].includes(settings.serverTimestampBehavior)
+    ) {
+      return Promise.reject(
+        new Error(
+          "firebase.firestore().settings(*) 'settings.serverTimestampBehavior' must be one of 'estimate', 'previous', 'none'.",
+        ),
+      );
+    }
+
+    if (!isUndefined(settings.ignoreUndefinedProperties)) {
+      if (!isBoolean(settings.ignoreUndefinedProperties)) {
+        return Promise.reject(
+          new Error(
+            "firebase.firestore().settings(*) 'settings.ignoreUndefinedProperties' must be a boolean value.",
+          ),
+        );
+      } else {
+        this._settings.ignoreUndefinedProperties = settings.ignoreUndefinedProperties;
+      }
+
+      delete settings.ignoreUndefinedProperties;
+    }
+
+    if (settings.persistence === false) {
+      // Required for persistentCacheIndexManager(), if this setting is `false`, it returns `null`
+      this._settings.persistence = false;
+    }
+
     return this.native.settings(settings);
+  }
+
+  persistentCacheIndexManager() {
+    if (this._settings.persistence === false) {
+      return null;
+    }
+    return createDeprecationProxy(new FirestorePersistentCacheIndexManager(this));
   }
 }
 
 // import { SDK_VERSION } from '@react-native-firebase/firestore';
 export const SDK_VERSION = version;
+
+export * from './modular';
 
 // import firestore from '@react-native-firebase/firestore';
 // firestore().X(...);
@@ -268,7 +398,7 @@ export default createModuleNamespace({
   nativeModuleName,
   nativeEvents,
   hasMultiAppSupport: true,
-  hasCustomUrlOrRegionSupport: false,
+  hasCustomUrlOrRegionSupport: true,
   ModuleClass: FirebaseFirestoreModule,
 });
 
@@ -276,3 +406,8 @@ export default createModuleNamespace({
 // firestore().X(...);
 // firebase.firestore().X(...);
 export const firebase = getFirebaseRoot();
+
+// Register the interop module for non-native platforms.
+for (let i = 0; i < nativeModuleName.length; i++) {
+  setReactNativeModule(nativeModuleName[i], fallBackModule);
+}

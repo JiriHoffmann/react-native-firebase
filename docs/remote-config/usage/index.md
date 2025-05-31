@@ -3,7 +3,7 @@ title: Remote Config
 description: Installation and getting started with Remote Config.
 icon: //static.invertase.io/assets/firebase/remote-config.svg
 next: /perf/usage
-previous: /ml/image-labeling
+previous: /ml/usage
 ---
 
 # Installation
@@ -154,8 +154,7 @@ if (awesomeNewFeature.getSource() === 'remote') {
 ## Caching
 
 Although Remote Config is a data-store, it is not designed for frequent reads - Firebase heavily caches the parameters
-(default is 12 hours). By design, this prevents the values being able to change frequently and potentially cause users
-confusion.
+(default is 12 hours).
 
 You can however specify your own cache length by specifically calling the `fetch` method with the number of seconds to
 cache the values for:
@@ -174,4 +173,48 @@ You can also apply a global cache frequency by calling the `setConfigSettings` m
 await remoteConfig().setConfigSettings({
   minimumFetchIntervalMillis: 30000,
 });
+```
+
+## Real-time updates
+
+Remote Config has the ability to trigger [real-time Remote Config updates](https://firebase.google.com/docs/remote-config/real-time)
+in applications that attach one or more listeners for them.
+
+### Key points to know about real-time updates
+
+1. **No activation by default:** If there is a config template update and you have a listener subscribed for real time updates, the native SDK will automatically fetch the new remote config template _but will not activate it for you_. Your callback code is responsible for activating the new template, and your application code is responsible for getting and reacting to the new config template values
+1. **Keys considered updated until activated:** Config template keys are considered updated _if they have been changed since you last **activated** the remote config template_. If you never activate the new template, previously changed keys will continue to show up in the set of updated keys sent to your registered listener callback
+1. **Real-time updates has a cost:** If you attach a listener, the native SDK opens a persistent web socket to the firebase servers. If all listeners are unsubscribed, this web socket is closed. Consider the battery usage and network data usage implications for your users
+1. **_Unactivated changes result in immediate callback_** If there has been a template change since you last activated, and you attach a listener, that listener will be called _immediately_ to update you on the pending changes
+
+### Known Issues
+
+1. **_Handle errors / retry in callback_** During testing here in react-native-firebase, we frequently received the "config_update_not_fetched" error when performing updates and fetching them rapidly. This may not occur in normal usage but be sure to include error handling code in your callback. If this error is raised, you should be able to fetch and activate the new config template with retries after a timeout. Tracked as https://github.com/firebase/firebase-ios-sdk/issues/11462 and a fix is anticipated in firebase-ios-sdk 10.12.0
+1. **_iOS web socket will never close_** During testing here in react-native-firebase, we identified a problem in firebase-ios-sdk where native listeners are not removed when you attempt to unsubscribe them, resulting in more update events than expected. As a temporary workaround to avoid the issue, we create a native listener on iOS the first time you subscribe to realtime update events, and we never remove the listener, even if you unsubscribe it. That means the web socket will never close once opened. This is tracked as https://github.com/firebase/firebase-ios-sdk/issues/11458 and a fix is anticipated in firebase-ios-sdk 10.12.0
+
+Here is an example of how to use the feature, with comments emphasizing the key points to know:
+
+```js
+// Add a config update listener where appropriate, perhaps in app startup, or a specific app area.
+// Multiple listeners are supported, so listeners may be screen-specific and only handle certain keys
+// depending on application requirements
+let remoteConfigListenerUnsubscriber = remoteConfig().onConfigUpdated((event, error) => {
+  if (error !== undefined) {
+    console.log('remote-config listener subscription error: ' + JSON.stringify(error));
+  } else {
+    // Updated keys are keys that are added, removed, or changed value, metadata, or source
+    // Note: A key is considered updated if it is different then the activated config.
+    //       If the new config is never activated, the same keys will remain in the set of
+    //       of updated keys passed to the callback on every config update
+    console.log('remote-config updated keys: ' + JSON.stringify(event));
+
+    // If you use realtime updates, the SDK fetches the new config for you.
+    // However, you must activate the new config so it is in effect
+    remoteConfig().activate();
+  }
+});
+
+// unsubscribe the listener when no longer needed - remote config will close the network socket if there
+// are no active listeners, potentially minimizing application user data and battery usage.
+remoteConfigListenerUnsubscriber();
 ```

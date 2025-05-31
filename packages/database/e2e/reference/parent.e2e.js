@@ -16,15 +16,46 @@
  */
 
 describe('database().ref().parent', function () {
-  it('returns null when no reference path is provides', function () {
-    const ref = firebase.database().ref();
-    should.equal(ref.parent, null);
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    it('returns null when no reference path is provides', function () {
+      const ref = firebase.database().ref();
+      should.equal(ref.parent, null);
+    });
+
+    it('return last token in reference path', function () {
+      const ref1 = firebase.database().ref('/foo').parent;
+      const ref2 = firebase.database().ref('/foo/bar/baz').parent;
+      should.equal(ref1, null);
+      ref2.key.should.equal('bar');
+    });
   });
 
-  it('return last token in reference path', function () {
-    const ref1 = firebase.database().ref('/foo').parent;
-    const ref2 = firebase.database().ref('/foo/bar/baz').parent;
-    should.equal(ref1, null);
-    ref2.key.should.equal('bar');
+  describe('modular', function () {
+    it('returns null when no reference path is provides', function () {
+      const { getDatabase, ref } = databaseModular;
+
+      const dbRef = ref(getDatabase());
+      should.equal(dbRef.parent, null);
+    });
+
+    it('return last token in reference path', function () {
+      const { getDatabase, ref } = databaseModular;
+
+      const db = getDatabase();
+      const ref1 = ref(db, '/foo').parent;
+      const ref2 = ref(db, '/foo/bar/baz').parent;
+      should.equal(ref1, null);
+      ref2.key.should.equal('bar');
+    });
   });
 });

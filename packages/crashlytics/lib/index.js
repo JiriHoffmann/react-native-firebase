@@ -16,7 +16,15 @@
  *
  */
 
-import { isBoolean, isError, isObject, isString } from '@react-native-firebase/app/lib/common';
+import { getApp } from '@react-native-firebase/app';
+import {
+  isBoolean,
+  isError,
+  isObject,
+  isString,
+  isOther,
+  MODULAR_DEPRECATION_ARG,
+} from '@react-native-firebase/app/lib/common';
 import {
   createModuleNamespace,
   FirebaseModule,
@@ -45,6 +53,7 @@ class FirebaseCrashlyticsModule extends FirebaseModule {
   }
 
   get isCrashlyticsCollectionEnabled() {
+    // Purposefully did not deprecate this as I think it should remain a property rather than a method.
     return this._isCrashlyticsCollectionEnabled;
   }
 
@@ -139,6 +148,8 @@ class FirebaseCrashlyticsModule extends FirebaseModule {
   }
 }
 
+export * from './modular';
+
 // import { SDK_VERSION } from '@react-native-firebase/crashlytics';
 export const SDK_VERSION = version;
 
@@ -159,4 +170,8 @@ export default createModuleNamespace({
 // crashlytics().X(...);
 // firebase.crashlytics().X(...);
 export const firebase = getFirebaseRoot();
-firebase.crashlytics();
+
+// This will throw with 'Default App Not initialized' if the default app is not configured.
+if (!isOther) {
+  firebase.crashlytics.call(null, getApp(), MODULAR_DEPRECATION_ARG);
+}

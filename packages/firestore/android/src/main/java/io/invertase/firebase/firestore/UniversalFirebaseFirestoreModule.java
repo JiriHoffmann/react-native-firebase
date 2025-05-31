@@ -17,82 +17,122 @@ package io.invertase.firebase.firestore;
  *
  */
 
-import android.content.Context;
+import static io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.createFirestoreKey;
+import static io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.getFirestoreForApp;
+import static io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.instanceCache;
 
+import android.content.Context;
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.LoadBundleTask;
 import io.invertase.firebase.common.UniversalFirebaseModule;
 import io.invertase.firebase.common.UniversalFirebasePreferences;
-
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.getFirestoreForApp;
-import static  io.invertase.firebase.firestore.UniversalFirebaseFirestoreCommon.instanceCache;
-
 public class UniversalFirebaseFirestoreModule extends UniversalFirebaseModule {
+
+  private static HashMap<String, String> emulatorConfigs = new HashMap<>();
 
   UniversalFirebaseFirestoreModule(Context context, String serviceName) {
     super(context, serviceName);
   }
 
-  Task<Void> disableNetwork(String appName) {
-    return getFirestoreForApp(appName).disableNetwork();
+  Task<Void> disableNetwork(String appName, String databaseId) {
+    return getFirestoreForApp(appName, databaseId).disableNetwork();
   }
 
-  Task<Void> enableNetwork(String appName) {
-    return getFirestoreForApp(appName).enableNetwork();
+  Task<Void> enableNetwork(String appName, String databaseId) {
+    return getFirestoreForApp(appName, databaseId).enableNetwork();
   }
 
-  Task<Void> settings(String appName, Map<String, Object> settings) {
-    return Tasks.call(getExecutor(), () -> {
-      // settings.cacheSizeBytes
-      if (settings.containsKey("cacheSizeBytes")) {
-        Double cacheSizeBytesDouble = (Double) settings.get("cacheSizeBytes");
-
-        UniversalFirebasePreferences.getSharedInstance().setIntValue(
-          UniversalFirebaseFirestoreStatics.FIRESTORE_CACHE_SIZE + "_" + appName,
-          Objects.requireNonNull(cacheSizeBytesDouble).intValue());
-      }
-
-      // settings.host
-      if (settings.containsKey("host")) {
-        UniversalFirebasePreferences.getSharedInstance().setStringValue(
-          UniversalFirebaseFirestoreStatics.FIRESTORE_HOST + "_" + appName, (String) settings.get("host"));
-      }
-
-      // settings.persistence
-      if (settings.containsKey("persistence")) {
-        UniversalFirebasePreferences.getSharedInstance().setBooleanValue(
-          UniversalFirebaseFirestoreStatics.FIRESTORE_PERSISTENCE + "_" + appName,
-          (boolean) settings.get("persistence"));
-      }
-
-      // settings.ssl
-      if (settings.containsKey("ssl")) {
-        UniversalFirebasePreferences.getSharedInstance().setBooleanValue(
-          UniversalFirebaseFirestoreStatics.FIRESTORE_SSL + "_" + appName, (boolean) settings.get("ssl"));
-      }
-
-      return null;
-    });
+  Task<Void> useEmulator(String appName, String databaseId, String host, int port) {
+    return Tasks.call(
+        getExecutor(),
+        () -> {
+          String firestoreKey = createFirestoreKey(appName, databaseId);
+          if (emulatorConfigs.get(firestoreKey) == null) {
+            emulatorConfigs.put(firestoreKey, "true");
+            getFirestoreForApp(appName, databaseId).useEmulator(host, port);
+          }
+          return null;
+        });
   }
 
-  Task<Void> clearPersistence(String appName) {
-    return getFirestoreForApp(appName).clearPersistence();
+  Task<Void> settings(String firestoreKey, Map<String, Object> settings) {
+    return Tasks.call(
+        getExecutor(),
+        () -> {
+          // settings.cacheSizeBytes
+          if (settings.containsKey("cacheSizeBytes")) {
+            Double cacheSizeBytesDouble = (Double) settings.get("cacheSizeBytes");
+
+            UniversalFirebasePreferences.getSharedInstance()
+                .setIntValue(
+                    UniversalFirebaseFirestoreStatics.FIRESTORE_CACHE_SIZE + "_" + firestoreKey,
+                    Objects.requireNonNull(cacheSizeBytesDouble).intValue());
+          }
+
+          // settings.host
+          if (settings.containsKey("host")) {
+            UniversalFirebasePreferences.getSharedInstance()
+                .setStringValue(
+                    UniversalFirebaseFirestoreStatics.FIRESTORE_HOST + "_" + firestoreKey,
+                    (String) settings.get("host"));
+          }
+
+          // settings.persistence
+          if (settings.containsKey("persistence")) {
+            UniversalFirebasePreferences.getSharedInstance()
+                .setBooleanValue(
+                    UniversalFirebaseFirestoreStatics.FIRESTORE_PERSISTENCE + "_" + firestoreKey,
+                    (boolean) settings.get("persistence"));
+          }
+
+          // settings.ssl
+          if (settings.containsKey("ssl")) {
+            UniversalFirebasePreferences.getSharedInstance()
+                .setBooleanValue(
+                    UniversalFirebaseFirestoreStatics.FIRESTORE_SSL + "_" + firestoreKey,
+                    (boolean) settings.get("ssl"));
+          }
+
+          // settings.serverTimestampBehavior
+          if (settings.containsKey("serverTimestampBehavior")) {
+            UniversalFirebasePreferences.getSharedInstance()
+                .setStringValue(
+                    UniversalFirebaseFirestoreStatics.FIRESTORE_SERVER_TIMESTAMP_BEHAVIOR
+                        + "_"
+                        + firestoreKey,
+                    (String) settings.get("serverTimestampBehavior"));
+          }
+
+          return null;
+        });
   }
 
-  Task<Void> waitForPendingWrites(String appName) {
-    return getFirestoreForApp(appName).waitForPendingWrites();
+  LoadBundleTask loadBundle(String appName, String databaseId, String bundle) {
+    byte[] bundleData = bundle.getBytes(StandardCharsets.UTF_8);
+    return getFirestoreForApp(appName, databaseId).loadBundle(bundleData);
   }
 
-  Task<Void> terminate(String appName) {
-    FirebaseFirestore firebaseFirestore = getFirestoreForApp(appName);
+  Task<Void> clearPersistence(String appName, String databaseId) {
+    return getFirestoreForApp(appName, databaseId).clearPersistence();
+  }
 
-    if (instanceCache.get(appName) != null) {
-      instanceCache.get(appName).clear();
-      instanceCache.remove(appName);
+  Task<Void> waitForPendingWrites(String appName, String databaseId) {
+    return getFirestoreForApp(appName, databaseId).waitForPendingWrites();
+  }
+
+  Task<Void> terminate(String appName, String databaseId) {
+    FirebaseFirestore firebaseFirestore = getFirestoreForApp(appName, databaseId);
+    String firestoreKey = createFirestoreKey(appName, databaseId);
+    if (instanceCache.get(firestoreKey) != null) {
+      instanceCache.get(firestoreKey).clear();
+      instanceCache.remove(firestoreKey);
     }
 
     return firebaseFirestore.terminate();

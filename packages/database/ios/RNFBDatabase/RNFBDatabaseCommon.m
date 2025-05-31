@@ -16,8 +16,8 @@
  */
 
 #import "RNFBDatabaseCommon.h"
-#import "RNFBPreferences.h"
 #import "RNFBApp/RNFBSharedUtils.h"
+#import "RNFBPreferences.h"
 
 static __strong NSMutableDictionary *references;
 static __strong NSMutableDictionary *configSettingsLock;
@@ -25,6 +25,9 @@ static __strong NSMutableDictionary *configSettingsLock;
 NSString *const DATABASE_PERSISTENCE_ENABLED = @"firebase_database_persistence_enabled";
 NSString *const DATABASE_LOGGING_ENABLED = @"firebase_database_logging_enabled";
 NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistence_cache_size_bytes";
+
+NSString *const childPrioritiesKey = @"childPriorities";
+NSString *const childKeysKey = @"childKeys";
 
 @implementation RNFBDatabaseCommon
 
@@ -56,66 +59,66 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
   return firDatabase;
 }
 
-+ (void)setDatabaseConfig:(FIRDatabase *)firDatabase
-                    dbURL:(NSString *)dbURL {
++ (void)setDatabaseConfig:(FIRDatabase *)firDatabase dbURL:(NSString *)dbURL {
   NSMutableString *lockKey = [firDatabase.app.name mutableCopy];
 
   if (dbURL != nil && dbURL.length > 0) {
     [lockKey appendString:dbURL];
   }
 
-  @synchronized (configSettingsLock) {
+  @synchronized(configSettingsLock) {
     if (configSettingsLock[lockKey]) {
       return;
     }
   }
 
   RNFBPreferences *preferences = [RNFBPreferences shared];
-    
+
   @try {
     firDatabase.callbackQueue = [RNFBDatabaseCommon getDispatchQueue];
     // Persistence enabled
-    BOOL *persistenceEnabled = (BOOL *) [preferences getBooleanValue:DATABASE_PERSISTENCE_ENABLED defaultValue:false];
-    [firDatabase setPersistenceEnabled:(BOOL) persistenceEnabled];
+    BOOL *persistenceEnabled = (BOOL *)[preferences getBooleanValue:DATABASE_PERSISTENCE_ENABLED
+                                                       defaultValue:false];
+    [firDatabase setPersistenceEnabled:(BOOL)persistenceEnabled];
 
     // Logging enabled
-    BOOL *loggingEnabled = (BOOL *) [preferences getBooleanValue:DATABASE_LOGGING_ENABLED defaultValue:false];
-    [FIRDatabase setLoggingEnabled:(BOOL) loggingEnabled];
+    BOOL *loggingEnabled = (BOOL *)[preferences getBooleanValue:DATABASE_LOGGING_ENABLED
+                                                   defaultValue:false];
+    [FIRDatabase setLoggingEnabled:(BOOL)loggingEnabled];
 
     // Persistence cache size
     if ([preferences contains:DATABASE_PERSISTENCE_CACHE_SIZE]) {
-      NSInteger *cacheSizeBytes = [preferences getIntegerValue:DATABASE_PERSISTENCE_CACHE_SIZE defaultValue:(NSInteger *) 10000000];
-      [firDatabase setPersistenceCacheSizeBytes:(NSUInteger) cacheSizeBytes];
+      NSInteger cacheSizeBytes = [preferences getIntegerValue:DATABASE_PERSISTENCE_CACHE_SIZE
+                                                 defaultValue:10000000];
+      [firDatabase setPersistenceCacheSizeBytes:(NSUInteger)cacheSizeBytes];
     }
-      
-    @synchronized (configSettingsLock) {
+
+    @synchronized(configSettingsLock) {
       configSettingsLock[lockKey] = @YES;
     }
-      
+
   } @catch (NSException *exception) {
     if (![@"FIRDatabaseAlreadyInUse" isEqualToString:exception.name]) {
       @throw exception;
     } else {
-      @synchronized (configSettingsLock) {
-      configSettingsLock[lockKey] = @YES;
+      @synchronized(configSettingsLock) {
+        configSettingsLock[lockKey] = @YES;
       }
     }
   }
 }
 
-+ (FIRDatabaseReference *)getReferenceForDatabase
-    :(FIRDatabase *)firebaseDatabase
++ (FIRDatabaseReference *)getReferenceForDatabase:(FIRDatabase *)firebaseDatabase
                                              path:(NSString *)path {
-  @synchronized (configSettingsLock) {
+  @synchronized(configSettingsLock) {
     return [firebaseDatabase referenceWithPath:path];
   }
 }
 
-+ (FIRDatabaseReference *)getReferenceForDatabase
-    :(NSString *)key
++ (FIRDatabaseReference *)getReferenceForDatabase:(NSString *)key
                                  firebaseDatabase:(FIRDatabase *)firebaseDatabase
                                              path:(NSString *)path {
-  @synchronized (configSettingsLock) {
+  @synchronized(configSettingsLock) {
     FIRDatabaseReference *cachedReference = references[key];
 
     if (cachedReference != nil) {
@@ -125,7 +128,7 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
     FIRDatabaseReference *databaseReference = [firebaseDatabase referenceWithPath:path];
 
     references[key] = databaseReference;
-        
+
     return databaseReference;
   }
 }
@@ -134,27 +137,26 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
   [references removeObjectForKey:key];
 }
 
-+ (void)promiseRejectDatabaseException
-    :(RCTPromiseRejectBlock)reject
-                                 error:(NSError *)error {
++ (void)promiseRejectDatabaseException:(RCTPromiseRejectBlock)reject error:(NSError *)error {
   NSArray *codeAndMessage = [self getCodeAndMessage:error];
-  [RNFBSharedUtils rejectPromiseWithUserInfo:reject userInfo:(NSMutableDictionary *) @{
-    @"code": (NSString *) codeAndMessage[0],
-    @"message": (NSString *) codeAndMessage[1],
-  }];
+  [RNFBSharedUtils rejectPromiseWithUserInfo:reject
+                                    userInfo:(NSMutableDictionary *)@{
+                                      @"code" : (NSString *)codeAndMessage[0],
+                                      @"message" : (NSString *)codeAndMessage[1],
+                                    }];
 }
 
 + (NSArray *)getCodeAndMessage:(NSError *)error {
   NSString *code = @"unknown";
 
   if (error == nil) {
-    return @[code, @"An unknown error has occurred."];
+    return @[ code, @"An unknown error has occurred." ];
   }
 
-//  NSDictionary *userInfo = [error userInfo];
+  //  NSDictionary *userInfo = [error userInfo];
   NSString *message;
-//  NSError *underlyingError = userInfo[NSUnderlyingErrorKey];
-//  NSString *underlyingErrorDescription = [underlyingError localizedDescription];
+  //  NSError *underlyingError = userInfo[NSUnderlyingErrorKey];
+  //  NSString *underlyingErrorDescription = [underlyingError localizedDescription];
 
   switch (error.code) {
     case 1:
@@ -211,11 +213,10 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
       message = [error localizedDescription];
   }
 
-  return @[code, message];
+  return @[ code, message ];
 }
 
-+ (int)getEventTypeFromName
-    :(NSString *)name {
++ (int)getEventTypeFromName:(NSString *)name {
   int eventType = FIRDataEventTypeValue;
 
   if ([name isEqualToString:@"value"]) {
@@ -233,8 +234,7 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
   return eventType;
 }
 
-+ (NSDictionary *)snapshotWithPreviousChildToDictionary
-    :(FIRDataSnapshot *)dataSnapshot
++ (NSDictionary *)snapshotWithPreviousChildToDictionary:(FIRDataSnapshot *)dataSnapshot
                                       previousChildName:(NSString *)previousChildName {
   NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
   NSDictionary *snapshot = [self snapshotToDictionary:dataSnapshot];
@@ -245,8 +245,7 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
   return result;
 }
 
-+ (NSDictionary *)snapshotToDictionary
-    :(FIRDataSnapshot *)dataSnapshot {
++ (NSDictionary *)snapshotToDictionary:(FIRDataSnapshot *)dataSnapshot {
   NSMutableDictionary *snapshot = [[NSMutableDictionary alloc] init];
 
   if (dataSnapshot.key != nil) {
@@ -254,28 +253,32 @@ NSString *const DATABASE_PERSISTENCE_CACHE_SIZE = @"firebase_database_persistenc
   } else {
     [snapshot setValue:[NSNull null] forKey:@"key"];
   }
+  NSMutableDictionary *childProperties = [self getSnapshotChildProperties:dataSnapshot];
   [snapshot setValue:@(dataSnapshot.exists) forKey:@"exists"];
   [snapshot setValue:@(dataSnapshot.hasChildren) forKey:@"hasChildren"];
   [snapshot setValue:@(dataSnapshot.childrenCount) forKey:@"childrenCount"];
-  [snapshot setValue:[self getSnapshotChildKeys:dataSnapshot] forKey:@"childKeys"];
+  [snapshot setValue:childProperties[childKeysKey] forKey:childKeysKey];
+  [snapshot setValue:childProperties[childPrioritiesKey] forKey:childPrioritiesKey];
   [snapshot setValue:dataSnapshot.priority forKey:@"priority"];
   [snapshot setValue:dataSnapshot.value forKey:@"value"];
 
   return snapshot;
 }
 
-+ (NSMutableArray *)getSnapshotChildKeys:(FIRDataSnapshot *)dataSnapshot {
++ (NSMutableDictionary *)getSnapshotChildProperties:(FIRDataSnapshot *)dataSnapshot {
   NSMutableArray *childKeys = [NSMutableArray array];
+  NSMutableDictionary *childPriorities = [[NSMutableDictionary alloc] init];
   if (dataSnapshot.childrenCount > 0) {
     NSEnumerator *children = [dataSnapshot children];
     FIRDataSnapshot *child;
     child = [children nextObject];
     while (child) {
       [childKeys addObject:child.key];
+      [childPriorities setValue:child.priority forKey:child.key];
       child = [children nextObject];
     }
   }
-  return childKeys;
+  return @{childKeysKey : childKeys, childPrioritiesKey : childPriorities};
 }
 
 @end

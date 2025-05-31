@@ -1,6 +1,7 @@
 ---
 title: Performance Monitoring with Axios
 description: Monitor HTTP request performance with Firebase Performance Monitoring and Axios.
+next: /perf/ky-integration
 previous: /perf/usage
 ---
 
@@ -19,9 +20,9 @@ property on the axios instance. At this point, a new HTTP metric can be defined 
 import axios from 'axios';
 import perf from '@react-native-firebase/perf';
 
-axios.interceptors.request.use(async function(config) {
+axios.interceptors.request.use(async function (config) {
   try {
-    const httpMetric = perf().newHttpMetric(config.url, config.method);
+    const httpMetric = perf().newHttpMetric(config.url, config.method.toUpperCase());
     config.metadata = { httpMetric };
 
     // add any extra metric attributes, if required
@@ -46,7 +47,7 @@ interceptor can accept two callbacks, one for successful responses and one reque
 import axios from 'axios';
 
 axios.interceptors.response.use(
-  async function(response) {
+  async function (response) {
     try {
       // Request was successful, e.g. HTTP code 200
 
@@ -62,7 +63,7 @@ axios.interceptors.response.use(
       return response;
     }
   },
-  async function(error) {
+  async function (error) {
     try {
       // Request failed, e.g. HTTP code 500
 

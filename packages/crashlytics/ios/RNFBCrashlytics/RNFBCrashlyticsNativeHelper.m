@@ -16,13 +16,21 @@
  *
  */
 
-#import <Firebase/Firebase.h>
 #import "RNFBCrashlyticsNativeHelper.h"
+#import <Firebase/Firebase.h>
 
 @implementation RNFBCrashlyticsNativeHelper
 
 + (void)recordNativeError:(NSError *)error {
   [[FIRCrashlytics crashlytics] recordError:error];
+}
+
++ (void)log:(nonnull NSString *)msg {
+  [[FIRCrashlytics crashlytics] log:msg];
+}
+
++ (void)setCustomValue:(nullable id)value forKey:(nonnull NSString *)key {
+  [[FIRCrashlytics crashlytics] setCustomValue:value forKey:key];
 }
 
 @end

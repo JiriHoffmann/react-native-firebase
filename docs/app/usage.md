@@ -21,13 +21,14 @@ for manually initializing secondary Firebase app instances.
 
 Currently, the native Firebase SDKs only provide functionality for creating secondary apps on the following services:
 
+- [App Check](/app-check/usage).
 - [Authentication](/auth/usage).
 - [Realtime Database](/database/usage).
 - [Cloud Firestore](/firestore/usage).
-- [Cloud Functions](/functions/usage)
+- [Cloud Functions](/functions/usage).
 - [Cloud Storage](/storage/usage).
-- [Instance ID](/iid/usage).
 - [ML](/ml/usage).
+- [Installations](/installations/usage).
 - [Remote Config](/remote-config/usage).
 
 ## Initializing secondary apps
@@ -59,29 +60,29 @@ await firebase.initializeApp(credentials, config);
 Note that if you use multiple platforms, you will need to use the credentials relevant to that platform:
 
 ```js
-import firebase from "@react-native-firebase/app";
-import { Platform } from "react-native";
+import firebase from '@react-native-firebase/app';
+import { Platform } from 'react-native';
 
 // Your secondary Firebase project credentials for Android...
 const androidCredentials = {
-  clientId: "",
-  appId: "",
-  apiKey: "",
-  databaseURL: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  projectId: "",
+  clientId: '',
+  appId: '',
+  apiKey: '',
+  databaseURL: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  projectId: '',
 };
 
 // Your secondary Firebase project credentials for iOS...
 const iosCredentials = {
-  clientId: "",
-  appId: "",
-  apiKey: "",
-  databaseURL: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  projectId: "",
+  clientId: '',
+  appId: '',
+  apiKey: '',
+  databaseURL: '',
+  storageBucket: '',
+  messagingSenderId: '',
+  projectId: '',
 };
 
 // Select the relevant credentials
@@ -91,7 +92,7 @@ const credentials = Platform.select({
 });
 
 const config = {
-  name: "SECONDARY_APP",
+  name: 'SECONDARY_APP',
 };
 
 await firebase.initializeApp(credentials, config);

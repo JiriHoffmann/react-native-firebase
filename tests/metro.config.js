@@ -15,6 +15,8 @@
  *
  */
 
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+
 const { resolve, join } = require('path');
 const { readdirSync, statSync } = require('fs');
 
@@ -23,7 +25,7 @@ const exclusionList = require('metro-config/src/defaults/exclusionList');
 const rootDir = resolve(__dirname, '..');
 const packagesDir = resolve(rootDir, 'packages');
 
-const isDirectory = source => statSync(source).isDirectory() && !source.includes('/template');
+const isDirectory = source => statSync(source).isDirectory();
 const firebaseModules = readdirSync(packagesDir)
   .map(name => join(packagesDir, name))
   .filter(isDirectory);
@@ -37,8 +39,6 @@ const config = {
       /.*\/template\/project\/node_modules\/react-native\/.*/,
       new RegExp(`^${escape(resolve(rootDir, 'docs'))}\\/.*$`),
       new RegExp(`^${escape(resolve(rootDir, 'tests/ios'))}\\/.*$`),
-      new RegExp(`^${escape(resolve(rootDir, 'packages/template/project'))}\\/.*$`),
-      new RegExp(`^${escape(resolve(rootDir, 'packages/template/project/node_modules'))}\\/.*$`),
       new RegExp(
         `^${escape(resolve(rootDir, 'packages/template/project/node_modules/react-native'))}\\/.*$`,
       ),
@@ -62,10 +62,8 @@ const config = {
       },
     ),
   },
-  server: {
-    runInspectorProxy: !process.env.CI,
-  },
   transformer: {
+    unstable_allowRequireContext: true,
     getTransformOptions: async () => ({
       transform: {
         experimentalImportSupport: false,
@@ -76,4 +74,4 @@ const config = {
   watchFolders: [resolve(__dirname, '.'), ...firebaseModules],
 };
 
-module.exports = config;
+module.exports = mergeConfig(getDefaultConfig(__dirname), config);

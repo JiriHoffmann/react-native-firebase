@@ -26,18 +26,18 @@ import {
 } from '@react-native-firebase/app/lib/common';
 import FirestoreFieldPath, { fromDotSeparatedString } from '../FirestoreFieldPath';
 
-export function extractFieldPathData(data, segmenets) {
+export function extractFieldPathData(data, segments) {
   if (!isObject(data)) {
     return undefined;
   }
 
-  const pathValue = data[segmenets[0]];
+  const pathValue = data[segments[0]];
 
-  if (segmenets.length === 1) {
+  if (segments.length === 1) {
     return pathValue;
   }
 
-  return extractFieldPathData(pathValue, segmenets.slice(1));
+  return extractFieldPathData(pathValue, segments.slice(1));
 }
 
 export function parseUpdateArgs(args) {
@@ -91,7 +91,7 @@ export function parseSetOptions(options) {
       throw new Error("'options.merge' must be a boolean value.");
     }
 
-    out.merge = true;
+    out.merge = options.merge;
   }
 
   if (!isUndefined(options.mergeFields)) {

@@ -212,6 +212,48 @@ export namespace FirebasePerformanceTypes {
   }
 
   /**
+   * ScreenTrace allows you to record a custom screen rendering trace of slow and frozen frames.
+   * Throws on constructor if hardware acceleration is off or if Android is 9.0 or 9.1.
+   *
+   * @platform android Android !== 9.0.0 && Adnroid !== 9.1.0
+   */
+  export class ScreenTrace {
+    /**
+     * Starts a new screen trace. Does nothing if already started.
+     *
+     * #### Example
+     *
+     * ```js
+     * try {
+     *   const trace = firebase.perf().newScreenTrace('FooScreen');
+     *   await trace.start();
+     * } catch (e) {
+     *
+     * }
+     * ```
+     * @platform android Android >= 9.0.0
+     */
+    start(): Promise<null>;
+    /**
+     * Stops and sends the screen trace.
+     *
+     * #### Example
+     *
+     * ```js
+     * try {
+     *   const trace = firebase.perf().newScreenTrace('FooScreen');
+     *   await trace.start();
+     *   await trace.stop();
+     * } catch (e) {
+     *
+     * }
+     * ```
+     * @platform android Android >= 9.0.0
+     */
+    stop(): Promise<null>;
+  }
+
+  /**
    * Metric used to collect data for network requests/responses. A new instance must be used for every request/response.
    */
   export class HttpMetric {
@@ -356,7 +398,7 @@ export namespace FirebasePerformanceTypes {
     stop(): Promise<null>;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   export interface Statics {}
 
   /**
@@ -384,7 +426,22 @@ export namespace FirebasePerformanceTypes {
      * ```
      */
     isPerformanceCollectionEnabled: boolean;
-
+    /**
+     * Determines whether to collect 'out of the box' (i.e already setup for Firebase Performance) events.
+     * This can be set for iOS. Android will always return "true" as it has to be set at gradle level.
+     */
+    instrumentationEnabled: boolean;
+    /**
+     * Determines whether performance monitoring is enabled or disabled.
+     *
+     * #### Example
+     *
+     * ```js
+     * const isEnabled = firebase.perf().dataCollectionEnabled;
+     * console.log('Performance collection enabled: ', isEnabled);
+     * ```
+     */
+    dataCollectionEnabled: boolean;
     /**
      * Enables or disables performance monitoring.
      *
@@ -394,8 +451,9 @@ export namespace FirebasePerformanceTypes {
      * // Disable performance monitoring collection
      * await firebase.perf().setPerformanceCollectionEnabled(false);
      * ```
-     *
-     * @param enabled Should performance monitoring be enabled
+     * @deprecated prefer setting `dataCollectionEnabled = boolean`.
+     * @param enabled Should performance monitoring be enabled. For iOS only, this also toggles whether instrumentation
+     * is enabled. See: https://firebase.google.com/docs/reference/ios/firebaseperformance/api/reference/Classes/FIRPerformance#instrumentationenabled
      */
     setPerformanceCollectionEnabled(enabled: boolean): Promise<null>;
 
@@ -427,6 +485,45 @@ export namespace FirebasePerformanceTypes {
     startTrace(identifier: string): Promise<Trace>;
 
     /**
+     * Creates a ScreenTrace instance with the given identifier.
+     * Throws if hardware acceleration is disabled or if Android is 9.0 or 9.1.
+     *
+     * #### Example
+     *
+     * ```js
+     * try {
+     *   const trace = firebase.perf().newScreenTrace('FooScreen');
+     *   await trace.start();
+     * } catch (e) {
+     *
+     * }
+     * ```
+     *
+     * @param identifier Name of the trace, no leading or trailing whitespace allowed, no leading underscore '_' character allowed, max length is 100.
+     */
+    newScreenTrace(identifier: string): ScreenTrace;
+
+    /**
+     * Creates a ScreenTrace instance with the given identifier and immediately starts it.
+     * Throws if hardware acceleration is disabled or if Android is 9.0 or 9.1.
+     *
+     * #### Example
+     *
+     * ```js
+     * try {
+     *   const trace = await firebase.perf().startScreenTrace('FooScreen');
+     *   await trace.stop();
+     * } catch (e) {
+     *
+     * }
+     * ```
+     * @platform android Android !== 9.0.0 && Android !== 9.1.0
+     *
+     * @param identifier Name of the screen
+     */
+    startScreenTrace(identifier: string): Promise<ScreenTrace>;
+
+    /**
      * Creates a HttpMetric instance for collecting network performance data for a single request/response
      *
      * #### Example
@@ -455,11 +552,12 @@ export const firebase: ReactNativeFirebase.Module & {
 
 export default defaultExport;
 
+export * from './modular';
+
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
     interface Module {

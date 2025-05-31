@@ -21,15 +21,44 @@ describe('firestore.doc().delete()', function () {
   before(function () {
     return wipe();
   });
-  it('deletes a document', async function () {
-    const ref = firebase.firestore().doc(`${COLLECTION}/deleteme`);
-    await ref.set({ foo: 'bar' });
-    const snapshot1 = await ref.get();
-    snapshot1.id.should.equal('deleteme');
-    snapshot1.exists.should.equal(true);
-    await ref.delete();
-    const snapshot2 = await ref.get();
-    snapshot2.id.should.equal('deleteme');
-    snapshot2.exists.should.equal(false);
+
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    it('deletes a document', async function () {
+      const ref = firebase.firestore().doc(`${COLLECTION}/deleteme`);
+      await ref.set({ foo: 'bar' });
+      const snapshot1 = await ref.get();
+      snapshot1.id.should.equal('deleteme');
+      snapshot1.exists().should.equal(true);
+      await ref.delete();
+      const snapshot2 = await ref.get();
+      snapshot2.id.should.equal('deleteme');
+      snapshot2.exists().should.equal(false);
+    });
+  });
+
+  describe('modular', function () {
+    it('deletes a document', async function () {
+      const { getFirestore, doc, setDoc, getDoc, deleteDoc } = firestoreModular;
+
+      const ref = doc(getFirestore(), `${COLLECTION}/deleteme`);
+      await setDoc(ref, { foo: 'bar' });
+      const snapshot1 = await getDoc(ref);
+      snapshot1.id.should.equal('deleteme');
+      snapshot1.exists().should.equal(true);
+      await deleteDoc(ref);
+      const snapshot2 = await getDoc(ref);
+      snapshot2.id.should.equal('deleteme');
+      snapshot2.exists().should.equal(false);
+    });
   });
 });

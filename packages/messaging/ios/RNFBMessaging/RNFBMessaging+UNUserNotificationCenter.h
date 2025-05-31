@@ -21,14 +21,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface RNFBMessagingUNUserNotificationCenter : NSObject <UNUserNotificationCenterDelegate>
 
-@property NSDictionary *initialNotification;
-@property(nonatomic, nullable, weak) id <UNUserNotificationCenterDelegate> originalDelegate;
+@property NSDictionary *_Nullable initialNotification;
+@property BOOL didOpenSettingsForNotification;
+@property(nonatomic, nullable, weak) id<UNUserNotificationCenterDelegate> originalDelegate;
 
 + (_Nonnull instancetype)sharedInstance;
 
 - (void)observe;
 
 - (nullable NSDictionary *)getInitialNotification;
+
+- (NSNumber *)getDidOpenSettingsForNotification;
 @end
 
 NS_ASSUME_NONNULL_END

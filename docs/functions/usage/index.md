@@ -3,7 +3,7 @@ title: Cloud Functions
 description: Installation and getting started with Cloud Functions.
 icon: //static.invertase.io/assets/firebase/cloud-functions.svg
 next: /functions/writing-deploying-functions
-previous: /firestore/usage-with-flatlists
+previous: /firestore/pagination
 ---
 
 # Installation
@@ -47,6 +47,24 @@ about security or implementing a HTTP request library.
 Functions deployed to Firebase have unique names, allowing you to easily identify which endpoint you wish to send a request to.
 To learn more about deploying Functions to Firebase, view the [Writing & Deploying Functions](/functions/writing-deploying-functions) documentation.
 
+## Using an emulator
+
+Whilst developing your application with Cloud Functions, it is possible to run the functions inside of a local emulator.
+
+To call the emulated functions in the **default** region, call the `useEmulator` method exposed by the library:
+
+```js
+import functions from '@react-native-firebase/functions';
+
+// Use a local emulator in development
+if (__DEV__) {
+  // If you are running on a physical device, replace http://localhost with the local ip of your PC. (http://192.168.x.x)
+  functions().useEmulator('localhost', 5001);
+}
+```
+
+If your functions are deployed on a different region, then please see [Region-specific Functions](#region-specific-functions)
+
 ## Calling an endpoint
 
 Assuming we have a deployed a callable endpoint named `listProducts`, to call the endpoint the library exposes a
@@ -88,18 +106,16 @@ function App() {
 }
 ```
 
-## Using an emulator
+## Region-specific Functions
 
-Whilst developing your application with Cloud Functions, it is possible to run the functions inside of a local emulator.
+If you need to deploy Functions in a region other than the default one, modified statements need to be used.
 
-To call the emulated functions, call the `useFunctionsEmulator` method exposed by the library:
+```javascript
+import { firebase } from '@react-native-firebase/functions';
 
-```js
-import functions from '@react-native-firebase/functions';
+// Emulator statement
+firebase.app().functions('region_name').useEmulator('localhost', 5001);
 
-// Use a local emulator in development
-if (__DEV__) {
-  // If you are running on a physical device, replace http://localhost with the local ip of your PC. (http://192.168.x.x)
-  functions().useFunctionsEmulator('http://localhost:5000');
-}
+// function calling statement
+firebase.app().functions('region_name').httpsCallable('listProducts')({ abc: 123 }).then();
 ```

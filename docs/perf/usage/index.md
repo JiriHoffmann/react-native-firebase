@@ -27,6 +27,8 @@ you can follow the manual installation steps for [iOS](/perf/usage/installation/
 
 ## Add the Performance Monitoring Plugin
 
+> If you're using Expo, make sure to add the `@react-native-firebase/perf` config plugin to your `app.json` or `app.config.js`. It handles the below installation steps for you. For instructions on how to do that, view the [Expo](/#expo) installation section.
+
 On Android, you need to install the Google Performance Monitoring Plugin which enables automatic
 HTTPS network request monitoring.
 
@@ -36,7 +38,7 @@ Add the plugin to your `/android/build.gradle` file as a dependency:
 buildscript {
     dependencies {
         // ...
-        classpath 'com.google.firebase:perf-plugin:1.3.5'
+        classpath 'com.google.firebase:perf-plugin:1.4.2'
     }
 ```
 
@@ -81,6 +83,26 @@ async function customTrace() {
 
   // Stop the trace
   await trace.stop();
+}
+```
+
+## Custom screen traces
+
+Record a custom screen rendering trace (slow frames / frozen frames)
+
+```jsx
+import perf from '@react-native-firebase/perf';
+
+async function screenTrace() {
+  // Define & start a screen trace
+  try {
+    const trace = await perf().startScreenTrace('FooScreen');
+    // Stop the trace
+    await trace.stop();
+  } catch (e) {
+    // rejects if iOS or (Android == 8 || Android == 8.1)
+    // or if hardware acceleration is off
+  }
 }
 ```
 
@@ -138,7 +160,7 @@ set the `perf_auto_collection_enabled` flag to `false`:
 To re-enable collection (e.g. once you have the users consent), call the `setPerformanceCollectionEnabled` method:
 
 ```js
-import {firebase} from '@react-native-firebase/perf';
+import { firebase } from '@react-native-firebase/perf';
 // ...
 await firebase.perf().setPerformanceCollectionEnabled(true);
 ```

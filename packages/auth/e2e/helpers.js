@@ -1,56 +1,44 @@
 /* eslint-disable no-console */
 const { getE2eTestProject, getE2eEmulatorHost } = require('../../app/e2e/helpers');
-const http = require('http');
 
 // Call HTTP REST API URL and return JSON response parsed into object
-const callRestApi = async function callRestAPI(url, rawResult = false) {
-  // const TAG = 'auth::e2e:helpers:callRestApi - ';
-  return await new Promise((resolve, reject) => {
-    // console.log(TAG + 'making request');
-    const req = http.get(url, response => {
-      // console.log(TAG + 'callback');
-      let data = '';
-      response.on('data', chunk => {
-        // console.log(TAG + 'request callback response data callback');
-        // console.log(TAG + 'data event, got chunk: ' + chunk);
-        data += chunk;
-      });
-      response.on('end', () => {
-        // console.log(TAG + 'request callback response end callback');
-        if (rawResult) {
-          resolve(data);
-        } else {
-          resolve(JSON.parse(data));
-        }
-      });
-    });
-    req.on('error', error => reject(error));
+const callRestApi = async function callRestAPI(url, returnRedirectUrl = false) {
+  let _url = url;
+  if (Platform.android) {
+    _url = _url.replace('127.0.0.1', '10.0.2.2');
+  }
+  const response = await fetch(_url, {
+    redirect: returnRedirectUrl ? 'manual' : 'follow',
   });
+  if (returnRedirectUrl) {
+    return response.url;
+  }
+  return response.json();
 };
 
-exports.getRandomPhoneNumber = function getRandomPhoneNumber() {
+function getRandomPhoneNumber() {
   return '+593' + Utils.randString(9, '#19');
-};
+}
+exports.getRandomPhoneNumber = getRandomPhoneNumber;
 
 exports.clearAllUsers = async function clearAllUsers() {
-  // console.log('auth::helpers::clearAllUsers');
+  // console.error('auth::helpers::clearAllUsers');
   try {
-    const deleteOptions = {
-      method: 'DELETE',
-      headers: {
-        // Undocumented, but necessary - from Emulator UI network requests
-        Authorization: 'Bearer owner',
+    const response = await fetch(
+      'http://' +
+        getE2eEmulatorHost() +
+        ':9099' +
+        '/emulator/v1/projects/' +
+        getE2eTestProject() +
+        '/accounts',
+      {
+        method: 'delete',
+        headers: { Authorization: 'Bearer owner' },
       },
-      port: 9099,
-      host: getE2eEmulatorHost(),
-      path: '/emulator/v1/projects/' + getE2eTestProject() + '/accounts',
-    };
-    // console.log('request: ' + JSON.stringify(deleteOptions));
-    await new Promise((resolve, reject) => {
-      const req = http.request(deleteOptions);
-      req.on('error', error => reject(error));
-      req.end(resolve());
-    });
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const result = await response.json();
+    // console.error('received: ' + JSON.stringify(result));
   } catch (e) {
     console.error('Unable to wipe auth:', e);
     throw e;
@@ -58,35 +46,31 @@ exports.clearAllUsers = async function clearAllUsers() {
 };
 
 exports.disableUser = async function disableUser(userId) {
-  // console.log('auth::helpers::disableUser on userId: ' + userId);
-  const reqBody = JSON.stringify({ disableUser: true, localId: userId });
+  // console.error('auth::helpers::disableUser on userId: ' + userId);
   try {
-    const postOptions = {
-      method: 'POST',
-      headers: {
-        // Undocumented, but necessary - from Emulator UI network requests
-        Authorization: 'Bearer owner',
-        'Content-Type': 'application/json',
-        'Content-Length': reqBody.length,
+    const response = await fetch(
+      'http://' +
+        getE2eEmulatorHost() +
+        ':9099' +
+        '/identitytoolkit.googleapis.com/v1/projects/' +
+        getE2eTestProject() +
+        '/accounts:update',
+      {
+        method: 'post',
+        body: JSON.stringify({ disableUser: true, localId: userId }),
+        headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
       },
-      port: 9099,
-      host: getE2eEmulatorHost(),
-      path: '/identitytoolkit.googleapis.com/v1/accounts:update',
-    };
-    // console.log('request: ' + JSON.stringify(postOptions));
-    await new Promise((resolve, reject) => {
-      const req = http.request(postOptions);
-      req.on('error', error => reject(error));
-      req.write(reqBody);
-      req.end(resolve());
-    });
+    );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const result = await response.json();
+    // console.error('received: ' + JSON.stringify(result));
   } catch (e) {
     console.error('Unable to update user:', e);
     throw e;
   }
 };
 
-exports.getLastSmsCode = async function getLastSmsCode(specificPhone) {
+async function getLastSmsCode(specificPhone) {
   let lastSmsCode = null;
   try {
     // console.log('auth::e2e:helpers:getLastSmsCode - start');
@@ -123,9 +107,10 @@ exports.getLastSmsCode = async function getLastSmsCode(specificPhone) {
   }
   // console.log('getLastSmsCode returning code: ' + lastSmsCode);
   return lastSmsCode;
-};
+}
+exports.getLastSmsCode = getLastSmsCode;
 
-exports.getLastOob = async function getLastOob(specificEmail) {
+async function getLastOob(specificEmail) {
   let lastOob = null;
   try {
     // console.log('auth::e2e:helpers:getLastOob - start');
@@ -162,7 +147,8 @@ exports.getLastOob = async function getLastOob(specificEmail) {
   }
   // console.log('getLastOob returning code: ' + JSON.stringify(lastOob, null, 2);
   return lastOob;
-};
+}
+exports.getLastOob = getLastOob;
 
 exports.resetPassword = async function resetPassword(oobCode, newPassword) {
   const resetPasswordUrl =
@@ -175,7 +161,7 @@ exports.resetPassword = async function resetPassword(oobCode, newPassword) {
   return await callRestApi(resetPasswordUrl);
 };
 
-exports.verifyEmail = async function verifyEmail(oobCode) {
+async function verifyEmail(oobCode) {
   const verifyEmailUrl =
     'http://' +
     getE2eEmulatorHost() +
@@ -183,9 +169,82 @@ exports.verifyEmail = async function verifyEmail(oobCode) {
     oobCode +
     '&apiKey=fake-api-key';
   return await callRestApi(verifyEmailUrl);
-};
+}
+exports.verifyEmail = verifyEmail;
 
 // This URL comes from the Auth Emulator's oobCode blocks
 exports.signInUser = async function signInUser(oobUrl) {
   return await callRestApi(oobUrl, true);
+};
+
+async function createVerifiedUser(email, password) {
+  const { getAuth, createUserWithEmailAndPassword } = authModular;
+  const credential = await createUserWithEmailAndPassword(getAuth(), email, password);
+  await credential.user.sendEmailVerification();
+  const { oobCode } = await getLastOob(email);
+  await verifyEmail(oobCode);
+  await credential.user.reload();
+  return credential.user;
+}
+exports.createVerifiedUser = createVerifiedUser;
+
+/**
+ * Create a new user with a second factor enrolled. Returns phoneNumber, email and password
+ * for testing purposes. The session used to enroll the factor is terminated. You'll have to
+ * sign in using `signInWithEmailAndPassword(getAuth())`.
+ */
+exports.createUserWithMultiFactor = async function createUserWithMultiFactor() {
+  const { getAuth, multiFactor, signOut, PhoneAuthProvider, PhoneMultiFactorGenerator } =
+    authModular;
+  const email = 'verified@example.com';
+  const password = 'test123';
+  const user = await createVerifiedUser(email, password);
+  const multiFactorUser = await multiFactor(user);
+  const session = await multiFactorUser.getSession();
+  const phoneNumber = getRandomPhoneNumber();
+  const verificationId = await new PhoneAuthProvider(getAuth()).verifyPhoneNumber({
+    phoneNumber,
+    session,
+  });
+  const verificationCode = await getLastSmsCode(phoneNumber);
+  const cred = PhoneAuthProvider.credential(verificationId, verificationCode);
+  const multiFactorAssertion = PhoneMultiFactorGenerator.assertion(cred);
+  await multiFactorUser.enroll(multiFactorAssertion, 'Hint displayName');
+  await signOut(getAuth());
+
+  return Promise.resolve({
+    phoneNumber,
+    email,
+    password,
+  });
+};
+
+exports.signInUserWithMultiFactor = async function signInUserWithMultiFactor(
+  email,
+  password,
+  phoneNumber,
+) {
+  const {
+    getAuth,
+    getMultiFactorResolver,
+    signInWithEmailAndPassword,
+    PhoneAuthProvider,
+    PhoneMultiFactorGenerator,
+  } = authModular;
+  try {
+    await signInWithEmailAndPassword(getAuth(), email, password);
+  } catch (e) {
+    e.message.should.equal(
+      '[auth/multi-factor-auth-required] Please complete a second factor challenge to finish signing into this account.',
+    );
+    const resolver = getMultiFactorResolver(getAuth(), e);
+    let verificationId = await new PhoneAuthProvider(getAuth()).verifyPhoneNumber({
+      multiFactorHint: resolver.hints[0],
+      session: resolver.session,
+    });
+    let verificationCode = await getLastSmsCode(phoneNumber);
+    const credential = PhoneAuthProvider.credential(verificationId, verificationCode);
+    let multiFactorAssertion = PhoneMultiFactorGenerator.assertion(credential);
+    return resolver.resolveSignIn(multiFactorAssertion);
+  }
 };

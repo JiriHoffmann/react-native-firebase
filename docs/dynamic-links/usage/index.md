@@ -2,9 +2,11 @@
 title: Dynamic Links
 description: Installation and getting started with Dynamic Links.
 icon: //static.invertase.io/assets/firebase/dynamic-links.svg
-next: /iid/usage
+next: /in-app-messaging/usage
 previous: /database/presence-detection
 ---
+
+> **Deprecated:** Firebase Dynamic Links is deprecated and should not be adopted in projects that don't already use it. Functionality for the primary use cases of store/web routing and deferred/regular deep-linking will shut down on August 25, 2025. Firebase Authentication currently uses Firebase Dynamic Links to customize Authentication links, but the Firebase team will provide an update to ensure that this functionality continues working after the Firebase Dynamic Links service is shut down. See the [Dynamic Links Deprecation FAQ](https://firebase.google.com/support/dynamic-links-faq) for more information.
 
 # Installation
 
@@ -50,6 +52,9 @@ a Dynamic Link on iOS or Android, they can be taken directly to the linked conte
 
 ## iOS Setup
 
+> Notes: Currently, iOS requires a workaround to make method swizzling work. The workaround is described in [this github comment](https://github.com/invertase/react-native-firebase/issues/4548#issuecomment-1252028059). Without this, dynamic link matching behavior may be inconsistent.
+> If you are using Expo Managed Workflow, be sure to load the [@react-native-firebase/dynamic-links config plugin](https://rnfirebase.io/#managed-workflow) to automatically apply the workaround.
+
 To setup Dynamic Links on iOS, it is a **prerequisite** that you have an Apple developer account [setup](https://developer.apple.com/programs/enroll/).
 
 1. Add an `App Store ID` & `Team ID` to your app in your Firebase console. If you do not have an `App Store ID` yet, you can put any number in here for now. Your `Team ID` can be found in your Apple developer console.
@@ -74,7 +79,7 @@ To setup Dynamic Links on iOS, it is a **prerequisite** that you have an Apple d
 
 ### Dynamic Links With Custom Domains
 
-If you have set up a [custom domain](https://firebase.google.com/docs/dynamic-links/custom-domains) for your Firebase project, you must add the dynamic link URL prefix into your iOS project's `info.plist` file by using the  `FirebaseDynamicLinksCustomDomains` key. You can add multiple URLs as well.
+If you have set up a [custom domain](https://firebase.google.com/docs/dynamic-links/custom-domains) for your Firebase project, you must add the dynamic link URL prefix into your iOS project's `info.plist` file by using the `FirebaseDynamicLinksCustomDomains` key. You can add multiple URLs as well.
 
 Example:
 
@@ -88,30 +93,16 @@ Example:
     <string>https://custom.domain.io/bla</string>
     <string>https://custom.domain.io/bla2</string>
   </array>
-  
+
   ...other settings
-  
+
 </dict>
 </plist>
 ```
 
 If you don't add this, the dynamic link will invoke your app, but you cannot retrieve any deep link data you may need within your app, as the deep link will be completely ignored.
 
-## iOS Testing Your Dynamic Link
-
-To test your dynamic link, you will need to use a real device as it will not work on a simulator.
-
-### Application Is Installed On Device
-
-The iOS Notes app is a good place to paste your dynamic link and test it opens your app. It should work even if it is not a published app.
-
-### Application Is Not Installed On Device
-
-1. Switch the `App Store ID` in your Firebase Console project settings to a valid App Store ID e.g. iOS Notes App Store ID.
-
-2. Generate a new dynamic link and associate with your app.
-
-3. Paste the link in iOS Notes app. When you press, it should take you to the App Store for the ID you listed in your project settings. Just by making it to the App Store is good enough to indicate your dynamic link is working.
+Additionally specify the allowed URLs (by clicking the 3 dot menu icon > `Allowlist URL pattern` from the Dynamic Links page of the Firebase console) using regular expressions. Any URL that doesn't match one of the patterns will cause your Dynamic Links to return HTTP error 400.
 
 ## iOS Troubleshooting
 
@@ -133,6 +124,10 @@ The iOS Notes app is a good place to paste your dynamic link and test it opens y
 
 5. There is a known bug that you can follow [here](http://bit.ly/2y8gey4) that stops Apple from downloading the app site association file. The work around is to uninstall your app, restart your device and reinstall your app.
 
+6. Make sure your [deep link parameter](https://firebase.google.com/docs/dynamic-links/create-manually?authuser=0#parameters) is properly URL-encoded, especially if it contains a query string.
+
+7. Try the `performDiagnostics` API on the Dynamic Links module, while running the app on a real device and watching output from either Xcode or Console app. You may search for "Links" and you will see the diagnostic output.
+
 ## Android Setup
 
 1. Create a SHA-256 fingerprint using these [instructions](https://developers.google.com/android/guides/client-auth) for your app, and add to your app in your Firebase console.
@@ -141,10 +136,25 @@ The iOS Notes app is a good place to paste your dynamic link and test it opens y
 
 2. Test the domain you created in your Firebase console (first step in `Firebase Setup`). Go to the following location in your browser `[your-domain]/.well-known/assetlinks.json`. The response will have a `target` object containing a `package_name` which ought to have your app's package name. Please
    do not proceed until you see this, it may take a while to register.
-   
 3. Add your domains to the android/app/src/main/AndroidManifest.xml so that your app knows what links to open in the app. Refer to [the official docs](https://firebase.google.com/docs/dynamic-links/android/receive#add-an-intent-filter-for-deep-links) for example code.
 
-4. Test the dynamic link works via your emulator by pasting it into in a text message, notepad or email, and checking that it does open your application (ensure the app is installed on the emulator).
+## Testing Your Dynamic Link
+
+Simulate a user opening the link by pasting it into a text message, notepad or email, and pressing it.
+
+Alternatively, use the [uri-scheme](https://www.npmjs.com/package/uri-scheme) package.
+
+```bash
+npx uri-scheme open "https://xyz.page.link" --[ios|android]
+```
+
+### Application Is Not Installed On Device
+
+The link should take you to the App Store / Google Play, at which point you can abort and install the app manually instead.
+
+While this works on iOS even if the app is not published, testing on Android requires you to have published at least an _internal track_ version, to which the testing device also needs to have access to.
+
+The iOS Simulator throws an `address is invalid` error instead of opening the App Store, which you can safely ignore.
 
 ## Create a Link
 

@@ -21,20 +21,25 @@ import {
   isObject,
   isString,
   isUndefined,
+  filterModularArgument,
+  createDeprecationProxy,
 } from '@react-native-firebase/app/lib/common';
 import NativeError from '@react-native-firebase/app/lib/internal/NativeFirebaseError';
+import { FirestoreAggregateQuery } from './FirestoreAggregate';
 import FirestoreDocumentSnapshot from './FirestoreDocumentSnapshot';
 import FirestoreFieldPath, { fromDotSeparatedString } from './FirestoreFieldPath';
 import FirestoreQuerySnapshot from './FirestoreQuerySnapshot';
 import { parseSnapshotArgs, validateWithConverter } from './utils';
+import { _Filter, generateFilters } from './FirestoreFilter';
 
 let _id = 0;
 
 export default class FirestoreQuery {
-  constructor(firestore, collectionPath, modifiers, converter) {
+  constructor(firestore, collectionPath, modifiers, queryName) {
     this._firestore = firestore;
     this._collectionPath = collectionPath;
     this._modifiers = modifiers;
+    this._queryName = queryName;
     this._converter = converter;
   }
 
@@ -61,7 +66,7 @@ export default class FirestoreQuery {
 
       const documentSnapshot = docOrField;
 
-      if (!documentSnapshot.exists) {
+      if (!documentSnapshot.exists()) {
         throw new Error(
           `firebase.firestore().collection().${cursor}(*) Can't use a DocumentSnapshot that doesn't exist.`,
         );
@@ -131,21 +136,38 @@ export default class FirestoreQuery {
     return modifiers.setFieldsCursor(cursor, allFields);
   }
 
+  count() {
+    return createDeprecationProxy(
+      new FirestoreAggregateQuery(this._firestore, this, this._collectionPath, this._modifiers),
+    );
+  }
+
+  countFromServer() {
+    // deprecation warning called in count()
+    return this.count();
+  }
+
   endAt(docOrField, ...fields) {
-    return new FirestoreQuery(
-      this._firestore,
-      this._collectionPath,
-      this._handleQueryCursor('endAt', docOrField, fields),
-      this._converter,
+    return createDeprecationProxy(
+      new FirestoreQuery(
+        this._firestore,
+        this._collectionPath,
+        this._handleQueryCursor('endAt', docOrField, filterModularArgument(fields)),
+        this._queryName,
+        this._converter,
+      ),
     );
   }
 
   endBefore(docOrField, ...fields) {
-    return new FirestoreQuery(
-      this._firestore,
-      this._collectionPath,
-      this._handleQueryCursor('endBefore', docOrField, fields),
-      this._converter,
+    return createDeprecationProxy(
+      new FirestoreQuery(
+        this._firestore,
+        this._collectionPath,
+        this._handleQueryCursor('endBefore', docOrField, filterModularArgument(fields)),
+        this._queryName,
+        this._converter,
+      ),
     );
   }
 
@@ -168,7 +190,20 @@ export default class FirestoreQuery {
       );
     }
 
-    this._modifiers.validateLimitToLast();
+    if (!isUndefined(this._queryName)) {
+      return this._firestore.native
+        .namedQueryGet(
+          this._queryName,
+          this._modifiers.type,
+          this._modifiers.filters,
+          this._modifiers.orders,
+          this._modifiers.options,
+          options,
+        )
+        .then(data => new FirestoreQuerySnapshot(this._firestore, this, data, this._converter));
+    }
+
+    this._modifiers.validatelimitToLast();
 
     return this._firestore.native
       .collectionGet(
@@ -223,7 +258,9 @@ export default class FirestoreQuery {
 
     const modifiers = this._modifiers._copy().limit(limit);
 
-    return new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._converter);
+    return createDeprecationProxy(
+      new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._queryName, this._converter),
+    );
   }
 
   limitToLast(limitToLast) {
@@ -235,7 +272,10 @@ export default class FirestoreQuery {
 
     const modifiers = this._modifiers._copy().limitToLast(limitToLast);
 
-    return new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._converter);
+    return createDeprecationProxy(
+      new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._queryName, this._converter),
+    );
+
   }
 
   onSnapshot(...args) {
@@ -247,7 +287,7 @@ export default class FirestoreQuery {
     this._modifiers.validateLimitToLast();
 
     try {
-      const options = parseSnapshotArgs(args);
+      const options = parseSnapshotArgs(filterModularArgument(args));
       snapshotListenOptions = options.snapshotListenOptions;
       callback = options.callback;
       onNext = options.onNext;
@@ -290,15 +330,27 @@ export default class FirestoreQuery {
       this._firestore.native.collectionOffSnapshot(listenerId);
     };
 
-    this._firestore.native.collectionOnSnapshot(
-      this._collectionPath.relativeName,
-      this._modifiers.type,
-      this._modifiers.filters,
-      this._modifiers.orders,
-      this._modifiers.options,
-      listenerId,
-      snapshotListenOptions,
-    );
+    if (!isUndefined(this._queryName)) {
+      this._firestore.native.namedQueryOnSnapshot(
+        this._queryName,
+        this._modifiers.type,
+        this._modifiers.filters,
+        this._modifiers.orders,
+        this._modifiers.options,
+        listenerId,
+        snapshotListenOptions,
+      );
+    } else {
+      this._firestore.native.collectionOnSnapshot(
+        this._collectionPath.relativeName,
+        this._modifiers.type,
+        this._modifiers.filters,
+        this._modifiers.orders,
+        this._modifiers.options,
+        listenerId,
+        snapshotListenOptions,
+      );
+    }
 
     return unsubscribe;
   }
@@ -348,79 +400,108 @@ export default class FirestoreQuery {
       throw new Error(`firebase.firestore().collection().orderBy() ${e.message}`);
     }
 
-    return new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._converter);
+    return createDeprecationProxy(
+      new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._queryName, this._converter),
+    );
   }
 
   startAfter(docOrField, ...fields) {
-    return new FirestoreQuery(
-      this._firestore,
-      this._collectionPath,
-      this._handleQueryCursor('startAfter', docOrField, fields),
-      this._converter,
+    return createDeprecationProxy(
+      new FirestoreQuery(
+        this._firestore,
+        this._collectionPath,
+        this._handleQueryCursor('startAfter', docOrField, filterModularArgument(fields)),
+        this._queryName,
+        this._converter,
+      ),
     );
   }
 
   startAt(docOrField, ...fields) {
-    return new FirestoreQuery(
-      this._firestore,
-      this._collectionPath,
-      this._handleQueryCursor('startAt', docOrField, fields),
-      this._converter,
+    return createDeprecationProxy(
+      new FirestoreQuery(
+        this._firestore,
+        this._collectionPath,
+        this._handleQueryCursor('startAt', docOrField, filterModularArgument(fields)),
+        this._queryName,
+        this._converter,
+      ),
     );
   }
 
-  where(fieldPath, opStr, value) {
-    if (!isString(fieldPath) && !(fieldPath instanceof FirestoreFieldPath)) {
+  where(fieldPathOrFilter, opStr, value) {
+    if (
+      !isString(fieldPathOrFilter) &&
+      !(fieldPathOrFilter instanceof FirestoreFieldPath) &&
+      !(fieldPathOrFilter instanceof _Filter)
+    ) {
       throw new Error(
-        "firebase.firestore().collection().where(*) 'fieldPath' must be a string or instance of FieldPath.",
+        "firebase.firestore().collection().where(*) 'fieldPath' must be a string, instance of FieldPath or instance of Filter.",
       );
     }
 
-    let path;
-
-    if (isString(fieldPath)) {
-      try {
-        path = fromDotSeparatedString(fieldPath);
-      } catch (e) {
-        throw new Error(`firebase.firestore().collection().where(*) 'fieldPath' ${e.message}.`);
-      }
+    let modifiers;
+    if (fieldPathOrFilter instanceof _Filter && fieldPathOrFilter.queries) {
+      //AND or OR filter
+      const filters = generateFilters(fieldPathOrFilter, this._modifiers);
+      modifiers = this._modifiers._copy().filterWhere(filters);
     } else {
-      path = fieldPath;
-    }
+      if (fieldPathOrFilter instanceof _Filter) {
+        // Standard Filter. Usual path.
+        opStr = fieldPathOrFilter.operator;
+        value = fieldPathOrFilter.value;
+        fieldPathOrFilter = fieldPathOrFilter.fieldPath;
+      }
+      let path;
 
-    if (!this._modifiers.isValidOperator(opStr)) {
-      throw new Error(
-        "firebase.firestore().collection().where(_, *) 'opStr' is invalid. Expected one of '==', '>', '>=', '<', '<=', '!=', 'array-contains', 'not-in', 'array-contains-any' or 'in'.",
-      );
-    }
+      if (isString(fieldPathOrFilter)) {
+        try {
+          path = fromDotSeparatedString(fieldPathOrFilter);
+        } catch (e) {
+          throw new Error(`firebase.firestore().collection().where(*) 'fieldPath' ${e.message}.`);
+        }
+      } else {
+        path = fieldPathOrFilter;
+      }
 
-    if (isUndefined(value)) {
-      throw new Error(
-        "firebase.firestore().collection().where(_, _, *) 'value' argument expected.",
-      );
-    }
-
-    if (isNull(value) && !this._modifiers.isEqualOperator(opStr)) {
-      throw new Error(
-        "firebase.firestore().collection().where(_, _, *) 'value' is invalid. You can only perform equals comparisons on null",
-      );
-    }
-
-    if (this._modifiers.isInOperator(opStr)) {
-      if (!isArray(value) || !value.length) {
+      if (!this._modifiers.isValidOperator(opStr)) {
         throw new Error(
-          `firebase.firestore().collection().where(_, _, *) 'value' is invalid. A non-empty array is required for '${opStr}' filters.`,
+          "firebase.firestore().collection().where(_, *) 'opStr' is invalid. Expected one of '==', '>', '>=', '<', '<=', '!=', 'array-contains', 'not-in', 'array-contains-any' or 'in'.",
         );
       }
 
-      if (value.length > 10) {
+      if (isUndefined(value)) {
         throw new Error(
-          `firebase.firestore().collection().where(_, _, *) 'value' is invalid. '${opStr}' filters support a maximum of 10 elements in the value array.`,
+          "firebase.firestore().collection().where(_, _, *) 'value' argument expected.",
         );
       }
-    }
 
-    const modifiers = this._modifiers._copy().where(path, opStr, value);
+      if (
+        isNull(value) &&
+        !this._modifiers.isEqualOperator(opStr) &&
+        !this._modifiers.isNotEqualOperator(opStr)
+      ) {
+        throw new Error(
+          "firebase.firestore().collection().where(_, _, *) 'value' is invalid. You can only perform equals comparisons on null",
+        );
+      }
+
+      if (this._modifiers.isInOperator(opStr)) {
+        if (!isArray(value) || !value.length) {
+          throw new Error(
+            `firebase.firestore().collection().where(_, _, *) 'value' is invalid. A non-empty array is required for '${opStr}' filters.`,
+          );
+        }
+
+        if (value.length > 30) {
+          throw new Error(
+            `firebase.firestore().collection().where(_, _, *) 'value' is invalid. '${opStr}' filters support a maximum of 30 elements in the value array.`,
+          );
+        }
+      }
+
+      modifiers = this._modifiers._copy().where(path, opStr, value);
+    }
 
     try {
       modifiers.validateWhere();
@@ -428,12 +509,15 @@ export default class FirestoreQuery {
       throw new Error(`firebase.firestore().collection().where() ${e.message}`);
     }
 
-    return new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._converter);
+
+    return createDeprecationProxy(
+      new FirestoreQuery(this._firestore, this._collectionPath, modifiers, this._queryName, this._converter),
+    );
   }
 
   withConverter(converter) {
     if (isUndefined(converter) || isNull(converter)) {
-      return new FirestoreQuery(this._firestore, this._collectionPath, this._modifiers);
+      return new FirestoreQuery(this._firestore, this._collectionPath, this._modifiers, this._queryName);
     }
 
     try {
@@ -442,6 +526,8 @@ export default class FirestoreQuery {
       throw new Error(`firebase.firestore().collection().withConverter() ${e.message}`);
     }
 
-    return new FirestoreQuery(this._firestore, this._collectionPath, this._modifiers, converter);
+    return createDeprecationProxy(
+      new FirestoreQuery(this._firestore, this._collectionPath, this._modifiers, this._queryName, converter)
+    );
   }
 }

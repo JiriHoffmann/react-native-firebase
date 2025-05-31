@@ -2,8 +2,8 @@
 title: In App Messaging
 description: Installation and getting started with In App Messaging.
 icon: //static.invertase.io/assets/firebase/in-app-messaging.svg
-next: /ml/usage
-previous: /iid/usage
+next: /installations/usage
+previous: /dynamic-links/usage
 ---
 
 # Installation
@@ -48,6 +48,10 @@ predefined events (e.g. purchase). This involves no code for the developer to im
 Firebase Console are automatically handled and displayed on your user's device.
 
 This module provides a JavaScript API to allow greater control of the displaying of these messages.
+
+# Limitations
+
+According to github issue https://github.com/firebase/firebase-ios-sdk/issues/4768 Firebase In-App Messaging allows only 1 campaign per day on app foreground or app launch. This limit is to prevent you from accidentally overwhelming your users with non-contextually appropriate messages. However, if you use the contextual triggers (for example: Analytics event or programmatically triggered in-app-messaging campaigns), there is no daily rate limit.
 
 ## Displaying Messages
 

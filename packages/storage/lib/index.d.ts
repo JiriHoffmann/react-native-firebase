@@ -267,7 +267,7 @@ export namespace FirebaseStorageTypes {
      * }
      * ```
      *
-     * [Learn more about this header on Mozilla.](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Disposition)
+     * [Learn more about this header on Mozilla.](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Cache-Control)
      */
     cacheControl?: string | null;
 
@@ -316,9 +316,14 @@ export namespace FirebaseStorageTypes {
     contentType?: string | null;
 
     /**
+     * You may specify the md5hash of the file in metadata on upload only. It may not be updated via updateMetadata
+     */
+    md5hash?: string | null;
+
+    /**
      * Additional user-defined custom metadata for this storage object.
      *
-     * String values only are supported for custom metadata property values.
+     * All values must be strings. Set to null to delete all. Any keys ommitted during update will be removed.
      *
      * #### Example
      *
@@ -920,6 +925,21 @@ export namespace FirebaseStorageTypes {
   }
 
   /**
+   * Result returned from a non-resumable upload.
+   */
+  export interface TaskResult {
+    /**
+     * The metadata of the tasks via a {@link storage.FullMetadata} interface.
+     */
+    metadata: FullMetadata;
+
+    /**
+     * The {@link storage.Reference} of the task.
+     */
+    ref: Reference;
+  }
+
+  /**
    * The options `list()` accepts.
    */
   export interface ListOptions {
@@ -954,6 +974,16 @@ export namespace FirebaseStorageTypes {
      * Folders are implicit based on '/' in the object paths. For example, if a bucket has two objects '/a/b/1' and '/a/b/2', list('/a') will return '/a/b' as a prefix.
      */
     prefixes: Reference[];
+  }
+
+  /**
+   * Storage Emulator options. Web only.
+   */
+  export interface EmulatorMockTokenOptions {
+    /**
+     * the mock auth token to use for unit testing Security Rules.
+     */
+    mockUserToken?: string;
   }
 
   /**
@@ -1094,6 +1124,21 @@ export namespace FirebaseStorageTypes {
      * e.g. `gs://assets/logo.png` or `https://firebasestorage.googleapis.com/v0/b/react-native-firebase-testing.appspot.com/o/cats.gif`.
      */
     refFromURL(url: string): Reference;
+
+    /**
+     * Modify this Storage instance to communicate with the Firebase Storage emulator.
+     * This must be called synchronously immediately following the first call to firebase.storage().
+     * Do not use with production credentials as emulator traffic is not encrypted.
+     *
+     * Note: on android, hosts 'localhost' and '127.0.0.1' are automatically remapped to '10.0.2.2' (the
+     * "host" computer IP address for android emulators) to make the standard development experience easy.
+     * If you want to use the emulator on a real android device, you will need to specify the actual host
+     * computer IP address.
+     *
+     * @param host: emulator host (eg, 'localhost')
+     * @param port: emulator port (eg, 9199)
+     */
+    useEmulator(host: string, port: number): void;
   }
 }
 
@@ -1113,7 +1158,6 @@ export default defaultExport;
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStaticsAndApp = ReactNativeFirebase.FirebaseModuleWithStaticsAndApp;
     interface Module {
@@ -1127,3 +1171,5 @@ declare module '@react-native-firebase/app' {
     }
   }
 }
+
+export * from './modular';

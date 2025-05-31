@@ -1,15 +1,17 @@
 ---
 title: iOS Messaging Setup
 description: iOS requires additional configuration steps to be completed before you can receive messages.
+next: /messaging/ios-permissions
+previous: /messaging/usage
 ---
 
-Integrating the Cloud Messaging module on iOS devices requires additional setup before you devices receive messages.
-There are also a number of prerequisites which are required to be able to enable messaging:
+Integrating the Cloud Messaging module on iOS devices requires additional setup before your devices receive messages.
+There are also a number of prerequisites which are required to enable messaging:
 
 - You must have an active [Apple Developer Account](https://developer.apple.com/membercenter/index.action).
-- You must have a physical iOS device to receive messages.
+- You may use a physical iOS device to receive messages _or_ an iOS Simulator if you are on macOS 13+ on Apple Silicon using a Simulator running iOS 16+
   - Firebase Cloud Messaging integrates with the [Apple Push Notification service (APNs)](https://developer.apple.com/notifications/),
-    however APNs only works with real devices.
+    however APNs only works with real devices or Apple Silicon macs running relatively new versions
 
 ## Configuring your app
 

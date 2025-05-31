@@ -15,8 +15,8 @@
  *
  */
 
+#import <FirebaseCoreExtension/FIRLibrary.h>
 #import <Foundation/Foundation.h>
-#import <FirebaseCore/FIRLibrary.h>
 
 @interface RNFBCrashlyticsInitProvider : NSObject <FIRLibrary>
 
@@ -24,12 +24,10 @@
 
 + (BOOL)isErrorGenerationOnJSCrashEnabled;
 
++ (BOOL)isCrashlyticsJavascriptExceptionHandlerChainingEnabled;
+
 /// Returns one or more FIRComponents that will be registered in
 /// FIRApp and participate in dependency resolution and injection.
 + (NSArray<FIRComponent *> *)componentsToRegister;
-
-/// Implement this method if the library needs notifications for lifecycle events. This method is
-/// called when the developer calls `FirebaseApp.configure()`.
-+ (void)configureWithApp:(FIRApp *)app;
 
 @end

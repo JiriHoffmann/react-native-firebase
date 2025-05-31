@@ -20,58 +20,129 @@ const { PATH, seed, wipe } = require('../helpers');
 const TEST_PATH = `${PATH}/orderByChild`;
 
 describe('database().ref().orderByChild()', function () {
-  before(function () {
-    return seed(TEST_PATH);
-  });
-  after(function () {
-    return wipe(TEST_PATH);
+  before(async function () {
+    await seed(TEST_PATH);
   });
 
-  it('throws if path is not a string value', async function () {
-    try {
-      await firebase.database().ref().orderByChild({ foo: 'bar' });
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'path' must be a string value");
-      return Promise.resolve();
-    }
+  after(async function () {
+    await wipe(TEST_PATH);
   });
 
-  it('throws if path is an empty path', async function () {
-    try {
-      await firebase.database().ref().orderByChild('/');
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("'path' cannot be empty. Use orderByValue instead");
-      return Promise.resolve();
-    }
+  describe('v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    it('throws if path is not a string value', async function () {
+      try {
+        await firebase.database().ref().orderByChild({ foo: 'bar' });
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'path' must be a string value");
+        return Promise.resolve();
+      }
+    });
+
+    it('throws if path is an empty path', async function () {
+      try {
+        await firebase.database().ref().orderByChild('/');
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'path' cannot be empty. Use orderByValue instead");
+        return Promise.resolve();
+      }
+    });
+
+    it('throws if an orderBy call has already been set', async function () {
+      try {
+        await firebase.database().ref().orderByKey().orderByChild('foo');
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("You can't combine multiple orderBy calls");
+        return Promise.resolve();
+      }
+    });
+
+    it('order by a child value', async function () {
+      const ref = firebase.database().ref(TEST_PATH);
+
+      try {
+        const snapshot = await ref.child('query').orderByChild('number').once('value');
+
+        const expected = ['b', 'c', 'a'];
+
+        snapshot.forEach((childSnapshot, i) => {
+          childSnapshot.key.should.eql(expected[i]);
+        });
+
+        return Promise.resolve();
+      } catch (error) {
+        throw error;
+      }
+    });
   });
 
-  it('throws if an orderBy call has already been set', async function () {
-    try {
-      await firebase.database().ref().orderByKey().orderByChild('foo');
-      return Promise.reject(new Error('Did not throw an Error.'));
-    } catch (error) {
-      error.message.should.containEql("You can't combine multiple orderBy calls");
-      return Promise.resolve();
-    }
-  });
+  describe('modular', function () {
+    it('throws if path is not a string value', async function () {
+      const { getDatabase, ref, orderByChild, query } = databaseModular;
 
-  it('order by a child value', async function () {
-    const ref = firebase.database().ref(TEST_PATH);
+      try {
+        query(ref(getDatabase()), orderByChild({ foo: 'bar' }));
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'path' must be a string value");
+        return Promise.resolve();
+      }
+    });
 
-    try {
-      const snapshot = await ref.child('query').orderByChild('number').once('value');
+    it('throws if path is an empty path', async function () {
+      const { getDatabase, ref, orderByChild, query } = databaseModular;
 
-      const expected = ['b', 'c', 'a'];
+      try {
+        query(ref(getDatabase()), orderByChild('/'));
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("'path' cannot be empty. Use orderByValue instead");
+        return Promise.resolve();
+      }
+    });
 
-      snapshot.forEach((childSnapshot, i) => {
-        childSnapshot.key.should.eql(expected[i]);
-      });
+    it('throws if an orderBy call has already been set', async function () {
+      const { getDatabase, ref, orderByKey, orderByChild, query } = databaseModular;
 
-      return Promise.resolve();
-    } catch (error) {
-      throw error;
-    }
+      try {
+        query(ref(getDatabase()), orderByKey(), orderByChild('foo'));
+        return Promise.reject(new Error('Did not throw an Error.'));
+      } catch (error) {
+        error.message.should.containEql("You can't combine multiple orderBy calls");
+        return Promise.resolve();
+      }
+    });
+
+    it('order by a child value', async function () {
+      const { getDatabase, ref, get, child, orderByChild, query } = databaseModular;
+
+      const dbRef = ref(getDatabase(), TEST_PATH);
+
+      try {
+        const snapshot = await get(query(child(dbRef, 'query'), orderByChild('number')));
+
+        const expected = ['b', 'c', 'a'];
+
+        snapshot.forEach((childSnapshot, i) => {
+          childSnapshot.key.should.eql(expected[i]);
+        });
+
+        return Promise.resolve();
+      } catch (error) {
+        throw error;
+      }
+    });
   });
 });

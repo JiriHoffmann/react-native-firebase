@@ -15,11 +15,13 @@
  *
  */
 
+#import <Firebase/Firebase.h>
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
-#import <Firebase/Firebase.h>
 
 @interface RNFBMessagingSerializer : NSObject
+
++ (NSData *)APNSTokenDataFromNSString:(NSString *)token;
 
 + (NSString *)APNSTokenFromNSData:(NSData *)tokenData;
 

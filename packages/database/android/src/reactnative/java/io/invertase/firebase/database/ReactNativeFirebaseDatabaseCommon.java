@@ -17,27 +17,30 @@ package io.invertase.firebase.database;
  *
  */
 
+import static io.invertase.firebase.common.ReactNativeFirebaseModule.rejectPromiseWithCodeAndMessage;
+import static io.invertase.firebase.common.SharedUtils.mapPutValue;
 
 import android.util.Log;
 import com.facebook.react.bridge.*;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.MutableData;
-
+import java.util.HashMap;
 import javax.annotation.Nullable;
-
-import static io.invertase.firebase.common.ReactNativeFirebaseModule.rejectPromiseWithCodeAndMessage;
-import static io.invertase.firebase.common.SharedUtils.mapPutValue;
 
 public class ReactNativeFirebaseDatabaseCommon {
   private static final String TAG = "DatabaseCommon";
+  private static final String childPrioritiesKey = "childPriorities";
+  private static final String childKeysKey = "childKeys";
 
   /**
    * @param promise
    * @param exception
    */
-  public static void rejectPromiseDatabaseException(Promise promise, @Nullable Exception exception) {
+  public static void rejectPromiseDatabaseException(
+      Promise promise, @Nullable Exception exception) {
     UniversalDatabaseException databaseException = (UniversalDatabaseException) exception;
-    rejectPromiseWithCodeAndMessage(promise, databaseException.getCode(), databaseException.getMessage());
+    rejectPromiseWithCodeAndMessage(
+        promise, databaseException.getCode(), databaseException.getMessage());
   }
 
   /**
@@ -46,9 +49,7 @@ public class ReactNativeFirebaseDatabaseCommon {
    * @return
    */
   public static WritableMap snapshotWithPreviousChildToMap(
-    DataSnapshot dataSnapshot,
-    @Nullable String previousChildName
-  ) {
+      DataSnapshot dataSnapshot, @Nullable String previousChildName) {
     WritableMap result = Arguments.createMap();
     WritableMap snapshot = snapshotToMap(dataSnapshot);
 
@@ -63,12 +64,13 @@ public class ReactNativeFirebaseDatabaseCommon {
    */
   public static WritableMap snapshotToMap(DataSnapshot dataSnapshot) {
     WritableMap snapshot = Arguments.createMap();
-
+    HashMap<String, Object> childProperties = getChildProperties(dataSnapshot);
     snapshot.putString("key", dataSnapshot.getKey());
     snapshot.putBoolean("exists", dataSnapshot.exists());
     snapshot.putBoolean("hasChildren", dataSnapshot.hasChildren());
     snapshot.putDouble("childrenCount", dataSnapshot.getChildrenCount());
-    snapshot.putArray("childKeys", getChildKeys(dataSnapshot));
+    snapshot.putArray(childKeysKey, (ReadableArray) childProperties.get(childKeysKey));
+    snapshot.putMap(childPrioritiesKey, (WritableMap) childProperties.get(childPrioritiesKey));
     mapPutValue("priority", dataSnapshot.getPriority(), snapshot);
 
     if (!dataSnapshot.hasChildren()) {
@@ -99,10 +101,7 @@ public class ReactNativeFirebaseDatabaseCommon {
       }
     } else {
       if (snapshot.getValue() != null) {
-        String type = snapshot
-          .getValue()
-          .getClass()
-          .getName();
+        String type = snapshot.getValue().getClass().getName();
         switch (type) {
           case "java.lang.Boolean":
           case "java.lang.Long":
@@ -132,10 +131,7 @@ public class ReactNativeFirebaseDatabaseCommon {
       }
     } else {
       if (mutableData.getValue() != null) {
-        String type = mutableData
-          .getValue()
-          .getClass()
-          .getName();
+        String type = mutableData.getValue().getClass().getName();
         switch (type) {
           case "java.lang.Boolean":
           case "java.lang.Long":
@@ -152,11 +148,11 @@ public class ReactNativeFirebaseDatabaseCommon {
   }
 
   /**
-   * Data should be treated as an array if:
-   * 1) All the keys are integers
-   * 2) More than half the keys between 0 and the maximum key in the object have non-empty values
-   * <p>
-   * Definition from: https://firebase.googleblog.com/2014/04/best-practices-arrays-in-firebase.html
+   * Data should be treated as an array if: 1) All the keys are integers 2) More than half the keys
+   * between 0 and the maximum key in the object have non-empty values
+   *
+   * <p>Definition from:
+   * https://firebase.googleblog.com/2014/04/best-practices-arrays-in-firebase.html
    *
    * @param snapshot
    * @return
@@ -180,11 +176,11 @@ public class ReactNativeFirebaseDatabaseCommon {
   }
 
   /**
-   * Data should be treated as an array if:
-   * 1) All the keys are integers
-   * 2) More than half the keys between 0 and the maximum key in the object have non-empty values
-   * <p>
-   * Definition from: https://firebase.googleblog.com/2014/04/best-practices-arrays-in-firebase.html
+   * Data should be treated as an array if: 1) All the keys are integers 2) More than half the keys
+   * between 0 and the maximum key in the object have non-empty values
+   *
+   * <p>Definition from:
+   * https://firebase.googleblog.com/2014/04/best-practices-arrays-in-firebase.html
    *
    * @param mutableData
    * @return
@@ -224,9 +220,7 @@ public class ReactNativeFirebaseDatabaseCommon {
         expectedKey = key;
       }
       Any castedChild = castValue(child);
-      switch (castedChild
-        .getClass()
-        .getName()) {
+      switch (castedChild.getClass().getName()) {
         case "java.lang.Boolean":
           array.pushBoolean((Boolean) castedChild);
           break;
@@ -247,12 +241,7 @@ public class ReactNativeFirebaseDatabaseCommon {
           array.pushArray((WritableArray) castedChild);
           break;
         default:
-          Log.w(
-            TAG,
-            "Invalid type: " + castedChild
-              .getClass()
-              .getName()
-          );
+          Log.w(TAG, "Invalid type: " + castedChild.getClass().getName());
           break;
       }
       expectedKey++;
@@ -277,9 +266,7 @@ public class ReactNativeFirebaseDatabaseCommon {
         expectedKey = key;
       }
       Any castedChild = castValue(child);
-      switch (castedChild
-        .getClass()
-        .getName()) {
+      switch (castedChild.getClass().getName()) {
         case "java.lang.Boolean":
           array.pushBoolean((Boolean) castedChild);
           break;
@@ -300,12 +287,7 @@ public class ReactNativeFirebaseDatabaseCommon {
           array.pushArray((WritableArray) castedChild);
           break;
         default:
-          Log.w(
-            TAG,
-            "Invalid type: " + castedChild
-              .getClass()
-              .getName()
-          );
+          Log.w(TAG, "Invalid type: " + castedChild.getClass().getName());
           break;
       }
       expectedKey++;
@@ -323,9 +305,7 @@ public class ReactNativeFirebaseDatabaseCommon {
     for (DataSnapshot child : snapshot.getChildren()) {
       Any castedChild = castValue(child);
 
-      switch (castedChild
-        .getClass()
-        .getName()) {
+      switch (castedChild.getClass().getName()) {
         case "java.lang.Boolean":
           map.putBoolean(child.getKey(), (Boolean) castedChild);
           break;
@@ -345,12 +325,7 @@ public class ReactNativeFirebaseDatabaseCommon {
           map.putArray(child.getKey(), (WritableArray) castedChild);
           break;
         default:
-          Log.w(
-            TAG,
-            "Invalid type: " + castedChild
-              .getClass()
-              .getName()
-          );
+          Log.w(TAG, "Invalid type: " + castedChild.getClass().getName());
           break;
       }
     }
@@ -367,9 +342,7 @@ public class ReactNativeFirebaseDatabaseCommon {
     for (MutableData child : mutableData.getChildren()) {
       Any castedChild = castValue(child);
 
-      switch (castedChild
-        .getClass()
-        .getName()) {
+      switch (castedChild.getClass().getName()) {
         case "java.lang.Boolean":
           map.putBoolean(child.getKey(), (Boolean) castedChild);
           break;
@@ -389,12 +362,7 @@ public class ReactNativeFirebaseDatabaseCommon {
           map.putArray(child.getKey(), (WritableArray) castedChild);
           break;
         default:
-          Log.w(
-            TAG,
-            "Invalid type: " + castedChild
-              .getClass()
-              .getName()
-          );
+          Log.w(TAG, "Invalid type: " + castedChild.getClass().getName());
           break;
       }
     }
@@ -405,15 +373,29 @@ public class ReactNativeFirebaseDatabaseCommon {
    * @param snapshot
    * @return
    */
-  public static WritableArray getChildKeys(DataSnapshot snapshot) {
+  public static HashMap<String, Object> getChildProperties(DataSnapshot snapshot) {
     WritableArray childKeys = Arguments.createArray();
-
+    WritableMap childPriorities = Arguments.createMap();
+    HashMap<String, Object> childProperties = new HashMap<>();
     if (snapshot.hasChildren()) {
       for (DataSnapshot child : snapshot.getChildren()) {
         childKeys.pushString(child.getKey());
+
+        Object priority = child.getPriority();
+        // Priority can be String, Double or null
+        if (priority instanceof String) {
+          childPriorities.putString(child.getKey(), (String) priority);
+        } else if (priority instanceof Double) {
+          childPriorities.putDouble(child.getKey(), (Double) priority);
+        } else if (priority == null) {
+          childPriorities.putNull(child.getKey());
+        }
       }
     }
 
-    return childKeys;
+    childProperties.put(childKeysKey, childKeys);
+    childProperties.put(childPrioritiesKey, childPriorities);
+
+    return childProperties;
   }
 }

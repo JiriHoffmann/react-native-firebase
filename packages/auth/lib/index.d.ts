@@ -59,6 +59,11 @@ export namespace FirebaseAuthTypes {
        *  you might receive an updated credential (depending of provider) which you can use to recover from the error.
        */
       authCredential: AuthCredential | null;
+      /**
+       * When trying to sign in the user might be prompted for a second factor confirmation. Can
+       * can use this object to initialize the second factor flow and recover from the error.
+       */
+      resolver: MultiFactorResolver | null;
     };
   }
 
@@ -102,6 +107,70 @@ export namespace FirebaseAuthTypes {
      * @param secret A provider secret.
      */
     credential: (token: string | null, secret?: string) => AuthCredential;
+  }
+
+  /**
+   * Interface that represents an OAuth provider. Implemented by other providers.
+   */
+  export interface OAuthProvider extends AuthProvider {
+    /**
+     * The provider ID of the provider.
+     * @param providerId
+     */
+    // eslint-disable-next-line @typescript-eslint/no-misused-new
+    new (providerId: string): OAuthProvider;
+    /**
+     * Creates a new `AuthCredential`.
+     *
+     * @returns {@link auth.AuthCredential}.
+     * @param token A provider token.
+     * @param secret A provider secret.
+     */
+    credential: (token: string | null, secret?: string) => AuthCredential;
+    /**
+     * Sets the OAuth custom parameters to pass in an OAuth request for sign-in
+     * operations.
+     *
+     * @remarks
+     * For a detailed list, check the reserved required OAuth 2.0 parameters such as `client_id`,
+     * `redirect_uri`, `scope`, `response_type`, and `state` are not allowed and will be ignored.
+     *
+     * @param customOAuthParameters - The custom OAuth parameters to pass in the OAuth request.
+     */
+    setCustomParameters: (customOAuthParameters: Record<string, string>) => AuthProvider;
+    /**
+     * Retrieve the current list of custom parameters.
+     * @returns The current map of OAuth custom parameters.
+     */
+    getCustomParameters: () => Record<string, string>;
+    /**
+     * Add an OAuth scope to the credential.
+     *
+     * @param scope - Provider OAuth scope to add.
+     */
+    addScope: (scope: string) => AuthProvider;
+    /**
+     * Retrieve the current list of OAuth scopes.
+     */
+    getScopes: () => string[];
+  }
+
+  /**
+   * Interface that represents an Open ID Connect auth provider. Implemented by other providers.
+   */
+  export interface OIDCProvider {
+    /**
+     * The provider ID of the provider.
+     */
+    PROVIDER_ID: string;
+    /**
+     * Creates a new `OIDCProvider`.
+     *
+     * @returns {@link auth.AuthCredential}.
+     * @param oidcSuffix this is the "Provider ID" value from the firebase console fx `azure_test`.
+     * @param token A provider token.
+     */
+    credential: (oidcSuffix: string, idToken: string) => AuthCredential;
   }
 
   /**
@@ -172,11 +241,11 @@ export namespace FirebaseAuthTypes {
    */
   export interface PhoneAuthState {
     /**
-     * The timeout specified in {@link auth#verifyPhoneNumber} has expired.
+     * SMS message with verification code sent to phone number.
      */
     CODE_SENT: 'sent';
     /**
-     * SMS message with verification code sent to phone number.
+     * The timeout specified in {@link auth#verifyPhoneNumber} has expired.
      */
     AUTO_VERIFY_TIMEOUT: 'timeout';
     /**
@@ -189,10 +258,28 @@ export namespace FirebaseAuthTypes {
     ERROR: 'error';
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  export interface MultiFactorSession {
+    // this is has no documented contents, it is simply returned from some APIs and passed to others
+  }
+
+  export interface PhoneMultiFactorGenerator {
+    /**
+     * Identifies second factors of type phone.
+     */
+    FACTOR_ID: FactorId.PHONE;
+
+    /**
+     * Build a MultiFactorAssertion to resolve the multi-factor sign in process.
+     */
+    assertion(credential: AuthCredential): MultiFactorAssertion;
+  }
+
   /**
    * firebase.auth.X
    */
   export interface Statics {
+    getMultiFactorResolver: getMultiFactorResolver;
     /**
      * Email and password auth provider implementation.
      *
@@ -274,7 +361,17 @@ export namespace FirebaseAuthTypes {
      * firebase.auth.OAuthProvider;
      * ```
      */
-    OAuthProvider: AuthProvider;
+    OAuthProvider: OAuthProvider;
+    /**
+     * Custom Open ID connect auth provider implementation.
+     *
+     * #### Example
+     *
+     * ```js
+     * firebase.auth.OIDCAuthProvider;
+     * ```
+     */
+    OIDCAuthProvider: OIDCProvider;
     /**
      * A PhoneAuthState interface.
      *
@@ -285,6 +382,11 @@ export namespace FirebaseAuthTypes {
      * ```
      */
     PhoneAuthState: PhoneAuthState;
+
+    /**
+     * A PhoneMultiFactorGenerator interface.
+     */
+    PhoneMultiFactorGenerator: PhoneMultiFactorGenerator;
   }
 
   /**
@@ -358,6 +460,155 @@ export namespace FirebaseAuthTypes {
      * This is only accurate up to a granularity of 2 minutes for consecutive sign-in attempts.
      */
     lastSignInTime?: string;
+  }
+
+  /**
+   * Identifies the type of a second factor.
+   */
+  export enum FactorId {
+    PHONE = 'phone',
+  }
+
+  /**
+   * Contains information about a second factor.
+   */
+  export type MultiFactorInfo = PhoneMultiFactorInfo | TotpMultiFactorInfo;
+
+  export interface PhoneMultiFactorInfo extends MultiFactorInfoCommon {
+    factorId: 'phone';
+    /**
+     * The phone number used for this factor.
+     */
+    phoneNumber: string;
+  }
+
+  export interface TotpMultiFactorInfo extends MultiFactorInfoCommon {
+    factorId: 'totp';
+  }
+
+  export interface MultiFactorInfoCommon {
+    /**
+     * User friendly name for this factor.
+     */
+    displayName?: string;
+    /**
+     * Time the second factor was enrolled, in UTC.
+     */
+    enrollmentTime: string;
+    /**
+     * Unique id for this factor.
+     */
+    uid: string;
+  }
+
+  export interface MultiFactorAssertion {
+    token: string;
+    secret: string;
+  }
+
+  export interface PhoneMultiFactorEnrollInfoOptions {
+    phoneNumber: string;
+    session: MultiFactorSession;
+  }
+
+  export interface PhoneMultiFactorSignInInfoOptions {
+    multiFactorHint?: MultiFactorInfo;
+
+    /**
+     * Unused in react-native-firebase ipmlementation
+     */
+    multiFactorUid?: string;
+
+    session: MultiFactorSession;
+  }
+
+  /**
+   * Facilitates the recovery when a user needs to provide a second factor to sign-in.
+   */
+  export interface MultiFactorResolver {
+    /**
+     * A list of enrolled factors that can be used to complete the multi-factor challenge.
+     */
+    hints: MultiFactorInfo[];
+    /**
+     * Serialized session this resolver belongs to.
+     */
+    session: MultiFactorSession;
+
+    /**
+     * For testing purposes only
+     */
+    _auth?: FirebaseAuthTypes.Module;
+
+    /**
+     * Resolve the multi factor flow.
+     */
+    resolveSignIn(assertion: MultiFactorAssertion): Promise<UserCredential>;
+  }
+
+  /**
+   * Try and obtain a #{@link MultiFactorResolver} instance based on an error.
+   * Returns null if no resolver object could be found.
+   *
+   * #### Example
+   *
+   * ```js
+   * const auth = firebase.auth();
+   * auth.signInWithEmailAndPassword(email, password).then((user) => {
+   *   // signed in
+   * }).catch((error) => {
+   *   if (error.code === 'auth/multi-factor-auth-required') {
+   *     const resolver = getMultiFactorResolver(auth, error);
+   *   }
+   * });
+   * ```
+   */
+  export type getMultiFactorResolver = (
+    auth: FirebaseAuthTypes.Module,
+    error: unknown,
+  ) => MultiFactorResolver | null;
+
+  /**
+   * The entry point for most multi-factor operations.
+   */
+  export interface MultiFactorUser {
+    /**
+     * Returns the user's enrolled factors.
+     */
+    enrolledFactors: MultiFactorInfo[];
+
+    /**
+     * Return the session for this user.
+     */
+    getSession(): Promise<MultiFactorSession>;
+
+    /**
+     * Enroll an additional factor. Provide an optional display name that can be shown to the user.
+     * The method will ensure the user state is reloaded after successfully enrolling a factor.
+     */
+    enroll(assertion: MultiFactorAssertion, displayName?: string): Promise<void>;
+  }
+
+  /**
+   * Return the #{@link MultiFactorUser} instance for the current user.
+   */
+  export type multiFactor = (auth: FirebaseAuthTypes.Module) => Promise<MultiFactorUser>;
+
+  /**
+   * Holds information about the user's enrolled factors.
+   *
+   * #### Example
+   *
+   * ```js
+   * const user = firebase.auth().currentUser;
+   * console.log('User multi factors: ', user.multiFactor);
+   * ```
+   */
+  export interface MultiFactor {
+    /**
+     * Returns the enrolled factors
+     */
+    enrolledFactors: MultiFactorInfo[];
   }
 
   /**
@@ -630,6 +881,7 @@ export namespace FirebaseAuthTypes {
 
     /**
      * Sets the dynamic link domain (or subdomain) to use for the current link if it is to be opened using Firebase Dynamic Links. As multiple dynamic link domains can be configured per project, this field provides the ability to explicitly choose one. If none is provided, the first domain is used by default.
+     * Deprecated - use {@link ActionCodeSettings.linkDomain} instead.
      */
     dynamicLinkDomain?: string;
 
@@ -637,6 +889,11 @@ export namespace FirebaseAuthTypes {
      * This URL represents the state/Continue URL in the form of a universal link. This URL can should be constructed as a universal link that would either directly open the app where the action code would be handled or continue to the app after the action code is handled by Firebase.
      */
     url: string;
+    /**
+     * Firebase Dynamic Links is deprecated and will be shut down as early as August * 2025.
+     * Instead, use ActionCodeSettings.linkDomain to set a a custom domain. Learn more at: https://firebase.google.com/support/dynamic-links-faq
+     */
+    linkDomain?: string;
   }
 
   /**
@@ -826,11 +1083,24 @@ export namespace FirebaseAuthTypes {
    */
   export interface AuthSettings {
     /**
-     * iOS only flag to disable app verification for the purpose of testing phone authentication. For this property to take effect, it needs to be set before rendering a reCAPTCHA app verifier. When this is disabled, a mock reCAPTCHA is rendered instead. This is useful for manual testing during development or for automated integration tests.
+     * Forces application verification to use the web reCAPTCHA flow for Phone Authentication.
+     *
+     * Once this has been called, every call to PhoneAuthProvider#verifyPhoneNumber() will skip the Play Integrity API verification flow and use the reCAPTCHA flow instead.
+     *
+     * > Calling this method a second time will overwrite the previously passed parameter.
+     *
+     * @android
+     * @param appName
+     * @param forceRecaptchaFlow
+     * @param promise
+     */
+    forceRecaptchaFlowForTesting: boolean;
+
+    /**
+     * Flag to disable app verification for the purpose of testing phone authentication. For this property to take effect, it needs to be set before rendering a reCAPTCHA app verifier. When this is disabled, a mock reCAPTCHA is rendered instead. This is useful for manual testing during development or for automated integration tests.
      *
      * > In order to use this feature, you will need to [whitelist your phone number](https://firebase.google.com/docs/auth/web/phone-auth#test-with-whitelisted-phone-numbers) via the Firebase Console.
      *
-     * @ios
      * @param disabled Boolean value representing whether app verification should be disabled for testing.
      */
     appVerificationDisabledForTesting: boolean;
@@ -904,6 +1174,11 @@ export namespace FirebaseAuthTypes {
      * Returns the {@link auth.UserMetadata} associated with this user.
      */
     metadata: UserMetadata;
+
+    /**
+     * Returns the {@link auth.MultiFactor} associated with this user.
+     */
+    multiFactor: MultiFactor | null;
 
     /**
      * Returns the phone number of the user, as stored in the Firebase project's user database,
@@ -1000,6 +1275,58 @@ export namespace FirebaseAuthTypes {
     linkWithCredential(credential: AuthCredential): Promise<UserCredential>;
 
     /**
+     * Link the user with a federated 3rd party credential provider (Microsoft, Yahoo).
+     * The APIs here are the web-compatible linkWithPopup and linkWithRedirect but both
+     * share the same underlying native SDK behavior and may be used interchangably.
+     *
+     * #### Example
+     *
+     * ```js
+     * const provider = new firebase.auth.OAuthProvider('microsoft.com');
+     * const userCredential = await firebase.auth().currentUser.linkWithPopup(provider);
+     * ```
+     *
+     * @error auth/provider-already-linked Thrown if the provider has already been linked to the user. This error is thrown even if this is not the same provider's account that is currently linked to the user.
+     * @error auth/invalid-credential Thrown if the provider's credential is not valid. This can happen if it has already expired when calling link, or if it used invalid token(s). See the Firebase documentation for your provider, and make sure you pass in the correct parameters to the credential method.
+     * @error auth/credential-already-in-use Thrown if the account corresponding to the credential already exists among your users, or is already linked to a Firebase User.
+     * @error auth/email-already-in-use Thrown if the email corresponding to the credential already exists among your users.
+     * @error auth/operation-not-allowed Thrown if you have not enabled the provider in the Firebase Console. Go to the Firebase Console for your project, in the Auth section and the Sign in Method tab and configure the provider.
+     * @error auth/invalid-email Thrown if the email used in a auth.EmailAuthProvider.credential is invalid.
+     * @error auth/wrong-password Thrown if the password used in a auth.EmailAuthProvider.credential is not correct or when the user associated with the email does not have a password.
+     * @error auth/invalid-verification-code Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @throws on iOS {@link auth.NativeFirebaseAuthError}, on Android {@link auth.NativeFirebaseError}
+     * @param provider A created {@link auth.AuthProvider}.
+     */
+    linkWithPopup(provider: AuthProvider): Promise<UserCredential>;
+
+    /**
+     * Link the user with a federated 3rd party credential provider (Microsoft, Yahoo).
+     * The APIs here are the web-compatible linkWithPopup and linkWithRedirect but both
+     * share the same underlying native SDK behavior and may be used interchangably.
+     *
+     * #### Example
+     *
+     * ```js
+     * const provider = new firebase.auth.OAuthProvider('microsoft.com');
+     * const userCredential = await firebase.auth().currentUser.linkWithRedirect(provider);
+     * ```
+     *
+     * @error auth/provider-already-linked Thrown if the provider has already been linked to the user. This error is thrown even if this is not the same provider's account that is currently linked to the user.
+     * @error auth/invalid-credential Thrown if the provider's credential is not valid. This can happen if it has already expired when calling link, or if it used invalid token(s). See the Firebase documentation for your provider, and make sure you pass in the correct parameters to the credential method.
+     * @error auth/credential-already-in-use Thrown if the account corresponding to the credential already exists among your users, or is already linked to a Firebase User.
+     * @error auth/email-already-in-use Thrown if the email corresponding to the credential already exists among your users.
+     * @error auth/operation-not-allowed Thrown if you have not enabled the provider in the Firebase Console. Go to the Firebase Console for your project, in the Auth section and the Sign in Method tab and configure the provider.
+     * @error auth/invalid-email Thrown if the email used in a auth.EmailAuthProvider.credential is invalid.
+     * @error auth/wrong-password Thrown if the password used in a auth.EmailAuthProvider.credential is not correct or when the user associated with the email does not have a password.
+     * @error auth/invalid-verification-code Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @throws on iOS {@link auth.NativeFirebaseAuthError}, on Android {@link auth.NativeFirebaseError}
+     * @param provider A created {@link auth.AuthProvider}.
+     */
+    linkWithRedirect(provider: AuthProvider): Promise<UserCredential>;
+
+    /**
      * Re-authenticate a user with a third-party authentication provider.
      *
      * #### Example
@@ -1020,6 +1347,34 @@ export namespace FirebaseAuthTypes {
      */
     reauthenticateWithCredential(credential: AuthCredential): Promise<UserCredential>;
 
+    /**
+     * Re-authenticate a user with a federated authentication provider (Microsoft, Yahoo). For native platforms, this will open a browser window.
+     * #### Example
+     *
+     * ```js
+     * const provider = new firebase.auth.OAuthProvider('microsoft.com');
+     * const userCredential = await firebase.auth().currentUser.reauthenticateWithProvider(provider);
+     * ```
+     *
+     * @error auth/user-mismatch Thrown if the credential given does not correspond to the user.
+     * @error auth/user-not-found Thrown if the credential given does not correspond to any existing user.
+     * @error auth/invalid-credential Thrown if the provider's credential is not valid. This can happen if it has already expired when calling link, or if it used invalid token(s). See the Firebase documentation for your provider, and make sure you pass in the correct parameters to the credential method.
+     * @error auth/invalid-email Thrown if the email used in a auth.EmailAuthProvider.credential is invalid.
+     * @error auth/wrong-password Thrown if the password used in a auth.EmailAuthProvider.credential is not correct or when the user associated with the email does not have a password.
+     * @error auth/invalid-verification-code Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @param provider A created {@link auth.AuthProvider}.
+     * @returns A promise that resolves with no value.
+     */
+    reauthenticateWithRedirect(provider: AuthProvider): Promise<void>;
+    /**
+     * Re-authenticate a user with a federated authentication provider (Microsoft, Yahoo). For native platforms, this will open a browser window.
+     * pop-up equivalent on native platforms.
+     *
+     * @param provider - The auth provider.
+     * @returns A promise that resolves with the user credentials.
+     */
+    reauthenticateWithPopup(provider: AuthProvider): Promise<UserCredential>;
     /**
      * Refreshes the current user.
      *
@@ -1086,7 +1441,6 @@ export namespace FirebaseAuthTypes {
      * const user = firebase.auth().currentUser.toJSON();
      * ```
      */
-    // eslint-disable-next-line @typescript-eslint/ban-types
     toJSON(): object;
 
     /**
@@ -1295,6 +1649,7 @@ export namespace FirebaseAuthTypes {
 
     /**
      * Listen for changes in ID token.
+     * ID token can be verified (if desired) using the [admin SDK or a 3rd party JWT library](https://firebase.google.com/docs/auth/admin/verify-id-tokens)
      * This method returns a unsubscribe function to stop listening to events.
      * Always ensure you unsubscribe from the listener when no longer needed to prevent updates to components no longer in use.
      *
@@ -1413,6 +1768,22 @@ export namespace FirebaseAuthTypes {
     ): PhoneAuthListener;
 
     /**
+     * Obtain a verification id to complete the multi-factor sign-in flow.
+     */
+    verifyPhoneNumberWithMultiFactorInfo(
+      hint: MultiFactorInfo,
+      session: MultiFactorSession,
+    ): Promise<string>;
+
+    /**
+     * Send an SMS to the user for verification of second factor
+     * @param phoneInfoOptions the phone number and session to use during enrollment
+     */
+    verifyPhoneNumberForMultiFactor(
+      phoneInfoOptions: PhoneMultiFactorEnrollInfoOptions,
+    ): Promise<string>;
+
+    /**
      * Creates a new user with an email and password.
      *
      * This method also signs the user in once the account has been created.
@@ -1435,17 +1806,27 @@ export namespace FirebaseAuthTypes {
     /**
      * Signs a user in with an email and password.
      *
+     * ⚠️ Note:
+     * If "Email Enumeration Protection" is enabled in your Firebase Authentication settings (enabled by default),
+     * Firebase may return a generic `auth/invalid-login-credentials` error instead of more specific ones like
+     * `auth/user-not-found` or `auth/wrong-password`. This behavior is intended to prevent leaking information
+     * about whether an account with the given email exists.
+     *
+     * To receive detailed error codes, you must disable "Email Enumeration Protection", which may increase
+     * security risks if not properly handled on the frontend.
+     *
      * #### Example
      *
      * ```js
      * const userCredential = await firebase.auth().signInWithEmailAndPassword('joe.bloggs@example.com', '123456');
-     * ````
+     * ```
+     *
      * @error auth/invalid-email Thrown if the email address is not valid.
      * @error auth/user-disabled Thrown if the user corresponding to the given email has been disabled.
-     * @error auth/user-not-found Thrown if there is no user corresponding to the given email.
-     * @error auth/wrong-password Thrown if the password is invalid for the given email, or the account corresponding to the email does not have a password set.
-     * @param email The users email address.
-     * @param password The users password.
+     * @error auth/user-not-found Thrown if there is no user corresponding to the given email. (May be suppressed if email enumeration protection is enabled.)
+     * @error auth/wrong-password Thrown if the password is invalid or missing. (May be suppressed if email enumeration protection is enabled.)
+     * @param email The user's email address.
+     * @param password The user's password.
      */
     signInWithEmailAndPassword(email: string, password: string): Promise<UserCredential>;
 
@@ -1493,6 +1874,107 @@ export namespace FirebaseAuthTypes {
     signInWithCredential(credential: AuthCredential): Promise<UserCredential>;
 
     /**
+     * Signs the user in with a specified provider. This is a web-compatible API along with signInWithRedirect.
+     * They both share the same call to the underlying native SDK signInWithProvider method.
+     *
+     * #### Example
+     *
+     * ```js
+     * // create a new OAuthProvider
+     * const provider = firebase.auth.OAuthProvider('microsoft.com');
+     * // Sign the user in with the provider
+     * const userCredential = await firebase.auth().signInWithPopup(provider);
+     * ```
+     *
+     * @error auth/account-exists-with-different-credential Thrown if there already exists an account with the email address asserted by the credential.
+     * @error auth/invalid-credential Thrown if the credential is malformed or has expired.
+     * @error auth/operation-not-allowed Thrown if the type of account corresponding to the credential is not enabled. Enable the account type in the Firebase Console, under the Auth tab.
+     * @error auth/user-disabled Thrown if the user corresponding to the given credential has been disabled.
+     * @error auth/user-not-found Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and there is no user corresponding to the given email.
+     * @error auth/wrong-password Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and the password is invalid for the given email, or if the account corresponding to the email does not have a password set.
+     * @error auth/invalid-verification-code Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @param provider An `AuthProvider` configured for your desired provider, e.g. "microsoft.com"
+     */
+    signInWithPopup(provider: AuthProvider): Promise<UserCredential>;
+
+    /**
+     * Signs the user in with a specified provider. This is a web-compatible API along with signInWithPopup.
+     * They both share the same call to the underlying native SDK signInWithProvider method.
+     *
+     * #### Example
+     *
+     * ```js
+     * // create a new OAuthProvider
+     * const provider = firebase.auth.OAuthProvider('microsoft.com');
+     * // Sign the user in with the provider
+     * const userCredential = await firebase.auth().signInWithRedirect(provider);
+     * ```
+     *
+     * @error auth/account-exists-with-different-credential Thrown if there already exists an account with the email address asserted by the credential.
+     * @error auth/invalid-credential Thrown if the credential is malformed or has expired.
+     * @error auth/operation-not-allowed Thrown if the type of account corresponding to the credential is not enabled. Enable the account type in the Firebase Console, under the Auth tab.
+     * @error auth/user-disabled Thrown if the user corresponding to the given credential has been disabled.
+     * @error auth/user-not-found Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and there is no user corresponding to the given email.
+     * @error auth/wrong-password Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and the password is invalid for the given email, or if the account corresponding to the email does not have a password set.
+     * @error auth/invalid-verification-code Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @param provider An `AuthProvider` configured for your desired provider, e.g. "microsoft.com"
+     */
+    signInWithRedirect(provider: AuthProvider): Promise<UserCredential>;
+
+    /**
+     * Revokes a user's Sign in with Apple token.
+     *
+     * #### Example
+     *
+     * ```js
+     * // Generate an Apple ID authorizationCode for the currently logged in user (ie, with @invertase/react-native-apple-authentication)
+     * const { authorizationCode } = await appleAuth.performRequest({ requestedOperation: appleAuth.Operation.REFRESH });
+     * // Revoke the token
+     * await firebase.auth().revokeToken(authorizationCode);
+     * ```
+     *
+     * @param authorizationCode A generated authorization code from Sign in with Apple.
+     */
+    revokeToken(authorizationCode: string): Promise<void>;
+
+    /**
+     * Signs the user in with a federated OAuth provider supported by Firebase (Microsoft, Yahoo).
+     *
+     * From Firebase Docs:
+     * Unlike other OAuth providers supported by Firebase such as Google, Facebook, and Twitter, where
+     * sign-in can directly be achieved with OAuth access token based credentials, Firebase Auth does not
+     * support the same capability for providers such as Microsoft due to the inability of the Firebase Auth
+     * server to verify the audience of Microsoft OAuth access tokens.
+     *
+     * #### Example
+     * ```js
+     * // Generate an OAuth instance
+     * const provider = new firebase.auth.OAuthProvider('microsoft.com');
+     * // Optionally add scopes to the OAuth instance
+     * provider.addScope('mail.read');
+     * // Optionally add custom parameters to the OAuth instance
+     * provider.setCustomParameters({
+     *  prompt: 'consent',
+     * });
+     * // Sign in using the OAuth provider
+     * const userCredential = await firebase.auth().signInWithProvider(provider);
+     * ```
+     *
+     * @error auth/account-exists-with-different-credential Thrown if there already exists an account with the email address asserted by the credential.
+     * @error auth/invalid-credential Thrown if the credential is malformed or has expired.
+     * @error auth/operation-not-allowed Thrown if the type of account corresponding to the credential is not enabled. Enable the account type in the Firebase Console, under the Auth tab.
+     * @error auth/user-disabled Thrown if the user corresponding to the given credential has been disabled.
+     * @error auth/user-not-found Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and there is no user corresponding to the given email.
+     * @error auth/wrong-password Thrown if signing in with a credential from firebase.auth.EmailAuthProvider.credential and the password is invalid for the given email, or if the account corresponding to the email does not have a password set.
+     * @error auth/invalid-verification-code Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification code of the credential is not valid.
+     * @error auth/invalid-verification-id Thrown if the credential is a firebase.auth.PhoneAuthProvider.credential and the verification ID of the credential is not valid.
+     * @param provider A generated `AuthProvider`, for example from social auth.
+     */
+    signInWithProvider(provider: AuthProvider): Promise<UserCredential>;
+
+    /**
      * Sends a password reset email to the given email address.
      * Unlike the web SDK, the email will contain a password reset link rather than a code.
      *
@@ -1536,17 +2018,18 @@ export namespace FirebaseAuthTypes {
     sendSignInLinkToEmail(email: string, actionCodeSettings?: ActionCodeSettings): Promise<void>;
 
     /**
-     * Returns whether the user signed in with a given email link.
+     * Checks if an incoming link is a sign-in with email link suitable for signInWithEmailLink.
+     * Note that android and other platforms require `apiKey` link parameter for signInWithEmailLink
      *
      * #### Example
      *
      * ```js
-     * const signedInWithLink = firebase.auth().isSignInWithEmailLink(link);
+     * const valid = await firebase.auth().isSignInWithEmailLink(link);
      * ```
      *
-     * @param emailLink The email link to check whether the user signed in with it.
+     * @param emailLink The email link to verify prior to using signInWithEmailLink
      */
-    isSignInWithEmailLink(emailLink: string): boolean;
+    isSignInWithEmailLink(emailLink: string): Promise<boolean>;
 
     /**
      * Signs the user in with an email link.
@@ -1623,18 +2106,27 @@ export namespace FirebaseAuthTypes {
     /**
      * Returns a list of authentication methods that can be used to sign in a given user (identified by its main email address).
      *
+     * ⚠️ Note:
+     * If "Email Enumeration Protection" is enabled in your Firebase Authentication settings (which is the default),
+     * this method may return an empty array even if the email is registered, especially when called from an unauthenticated context.
+     *
+     * This is a security measure to prevent leaking account existence via email enumeration attacks.
+     * Do not use the result of this method to directly inform the user whether an email is registered.
+     *
      * #### Example
      *
      * ```js
      * const methods = await firebase.auth().fetchSignInMethodsForEmail('joe.bloggs@example.com');
      *
-     * methods.forEach((method) => {
-     *   console.log(method);
-     * });
+     * if (methods.length > 0) {
+     *   // Likely a registered user — offer sign-in
+     * } else {
+     *   // Could be unregistered OR email enumeration protection is active — offer registration
+     * }
      * ```
      *
      * @error auth/invalid-email Thrown if the email address is not valid.
-     * @param email The users email address.
+     * @param email The user's email address.
      */
     fetchSignInMethodsForEmail(email: string): Promise<string[]>;
 
@@ -1645,7 +2137,7 @@ export namespace FirebaseAuthTypes {
      * #### Example
      *
      * ```js
-     * await firebase.auth().verifyPasswordResetCode('ABCD');
+     * const verifiedEmail = await firebase.auth().verifyPasswordResetCode('ABCD');
      * ```
      *
      * @error auth/expired-action-code Thrown if the password reset code has expired.
@@ -1653,8 +2145,9 @@ export namespace FirebaseAuthTypes {
      * @error auth/user-disabled Thrown if the user corresponding to the given password reset code has been disabled.
      * @error auth/user-not-found Thrown if there is no user corresponding to the password reset code. This may have happened if the user was deleted between when the code was issued and when this method was called.
      * @param code A password reset code.
+     * @returns {string} The user's email address if valid
      */
-    verifyPasswordResetCode(code: string): Promise<void>;
+    verifyPasswordResetCode(code: string): Promise<string>;
     /**
      * Switch userAccessGroup and current user to the given accessGroup and the user stored in it.
      * Sign in a user with any sign in method, and the same current user is available in all
@@ -1682,10 +2175,37 @@ export namespace FirebaseAuthTypes {
      * @param url: emulator URL, must have host and port (eg, 'http://localhost:9099')
      */
     useEmulator(url: string): void;
+    /**
+     * Provides a MultiFactorResolver suitable for completion of a multi-factor flow.
+     *
+     * @param error: The MultiFactorError raised during a sign-in, or reauthentication operation.
+     */
+    getMultiFactorResolver(error: MultiFactorError): MultiFactorResolver;
+    /**
+     * The MultiFactorUser corresponding to the user.
+     *
+     * This is used to access all multi-factor properties and operations related to the user.
+     * @param user The user.
+     */
+    multiFactor(user: User): MultiFactorUser;
+    /**
+     * Returns the custom auth domain for the auth instance.
+     */
+    getCustomAuthDomain(): Promise<string>;
+    /**
+     * Sets the language code on the auth instance. This is to match Firebase JS SDK behavior.
+     * Please use the `setLanguageCode` method for setting the language code.
+     */
+    set languageCode(code: string | null);
+    /**
+     * Gets the config used to initialize this auth instance. This is to match Firebase JS SDK behavior.
+     * It returns an empty map as the config is not available in the native SDK.
+     */
+    get config(): Map<any, any>;
   }
 }
 
-type CallbackOrObserver<T extends (...args: any[]) => any> = T | { next: T };
+export type CallbackOrObserver<T extends (...args: any[]) => any> = T | { next: T };
 
 declare const defaultExport: ReactNativeFirebase.FirebaseModuleWithStaticsAndApp<
   FirebaseAuthTypes.Module,
@@ -1703,7 +2223,6 @@ export default defaultExport;
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStaticsAndApp = ReactNativeFirebase.FirebaseModuleWithStaticsAndApp;
     interface Module {
@@ -1714,3 +2233,5 @@ declare module '@react-native-firebase/app' {
     }
   }
 }
+
+export * from './modular';

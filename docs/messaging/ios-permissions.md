@@ -2,7 +2,7 @@
 title: iOS Permissions
 description: Request permissions from your users to allow notifications to be displayed.
 next: /messaging/notifications
-previous: /messaging/usage
+previous: /messaging/usage/ios-setup
 ---
 
 ## Understanding permissions
@@ -54,14 +54,15 @@ await messaging().requestPermission({
 
 The full list of permission settings can be seen in the table below along with their default values:
 
-| Permission     | Default | Description                                                                                                                   |
-| -------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `alert`        | `true`  | Sets whether notifications can be displayed to the user on the device.                                                        |
-| `announcement` | `false` | If enabled, Siri will read the notification content out when devices are connected to AirPods.                                |
-| `badge`        | `true`  | Sets whether a notification dot will appear next to the app icon on the device when there are unread notifications.           |
-| `carPlay`      | `true`  | Sets whether notifications will appear when the device is connected to [CarPlay](https://www.apple.com/ios/carplay/).         |
-| `provisional`  | `false` | Sets whether provisional permissions are granted. See [Provisional permission](#provisional-permission) for more information. |
-| `sound`        | `true`  | Sets whether a sound will be played when a notification is displayed on the device.                                           |
+| Permission                        | Default | Description                                                                                                                   |
+| --------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `alert`                           | `true`  | Sets whether notifications can be displayed to the user on the device.                                                        |
+| `announcement`                    | `false` | If enabled, Siri will read the notification content out when devices are connected to AirPods.                                |
+| `badge`                           | `true`  | Sets whether a notification dot will appear next to the app icon on the device when there are unread notifications.           |
+| `carPlay`                         | `true`  | Sets whether notifications will appear when the device is connected to [CarPlay](https://www.apple.com/ios/carplay/).         |
+| `provisional`                     | `false` | Sets whether provisional permissions are granted. See [Provisional permission](#provisional-permission) for more information. |
+| `sound`                           | `true`  | Sets whether a sound will be played when a notification is displayed on the device.                                           |
+| `providesAppNotificationSettings` | `false` | Indicates the system to display a button for in-app notification settings.                                                    |
 
 The settings provided will be stored by the device and will be visible in the iOS Settings UI for your application.
 
@@ -97,6 +98,7 @@ The value returned is a number value, which can be mapped to one of the followin
 - `0` = `messaging.AuthorizationStatus.DENIED`: The user has denied notification permissions.
 - `1` = `messaging.AuthorizationStatus.AUTHORIZED`: The user has accept the permission & it is enabled.
 - `2` = `messaging.AuthorizationStatus.PROVISIONAL`: [Provisional authorization](#provisional-authorization) has been granted.
+- `3` = `messaging.AuthorizationStatus.EPHEMERAL`: The app is authorized to create notifications for a limited amount of time. Used for app clips.
 
 To help improve the chances of the user granting your app permission, it is recommended that permission is requested at a time which makes
 sense during the flow of your application (e.g. starting a new chat), where the user would expect to receive such notifications.
@@ -119,3 +121,68 @@ await messaging().requestPermission({
 ```
 
 Users can then choose a permission option via the notification itself, and select whether they can continue to display quietly, display prominently or not at all.
+
+### Handle button for in-app notifications settings
+
+Devices on iOS 12+ can provide a button in iOS Notifications Settings _(at OS level: `Settings -> [App name] -> Notifications`)_ to redirect users to in-app notifications settings.
+
+1. Request `providesAppNotificationSettings` permissions:
+
+```typescript
+await messaging().requestPermission({ providesAppNotificationSettings: true });
+```
+
+2. Handle interaction when app is in background state:
+
+```typescript
+// index.js
+import { AppRegistry } from 'react-native'
+import messaging from '@react-native-firebase/messaging'
+
+...
+
+messaging().setOpenSettingsForNotificationsHandler(async () => {
+    // Set persistent value, using the MMKV package just as an example of how you might do it
+    MMKV.setBool(openSettingsForNotifications, true)
+})
+
+...
+
+AppRegistry.registerComponent(appName, () => App)
+```
+
+```typescript
+// App.tsx
+
+const App = () => {
+  const [openSettingsForNotifications] = useMMKVStorage('openSettingsForNotifications', MMKV, false)
+
+  useEffect(() => {
+    if (openSettingsForNotifications) {
+      navigate('NotificationsSettingsScreen')
+    }
+  }, [openSettingsForNotifications])
+
+  ...
+}
+```
+
+3. Handle interaction when app is in quit state:
+
+```typescript
+// App.tsx
+
+const App = () => {
+  useEffect(() => {
+        messaging()
+            .getDidOpenSettingsForNotification()
+            .then(async didOpenSettingsForNotification => {
+                if (didOpenSettingsForNotification) {
+                    navigate('NotificationsSettingsScreen')
+                }
+            })
+  }, [])
+
+    ...
+}
+```

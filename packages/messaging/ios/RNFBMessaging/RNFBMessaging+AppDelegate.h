@@ -15,9 +15,9 @@
  *
  */
 
-#import <UIKit/UIKit.h>
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
+#import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -25,18 +25,29 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property _Nullable RCTPromiseRejectBlock registerPromiseRejecter;
 @property _Nullable RCTPromiseResolveBlock registerPromiseResolver;
+@property(nonatomic, strong) NSCondition *conditionBackgroundMessageHandlerSet;
+@property(nonatomic) BOOL backgroundMessageHandlerSet;
+@property(nonatomic, copy) void (^completionHandler)(UIBackgroundFetchResult);
+@property(nonatomic, assign) UIBackgroundTaskIdentifier backgroundTaskId;
 
 + (_Nonnull instancetype)sharedInstance;
 
 - (void)observe;
 
-- (void)setPromiseResolve:(RCTPromiseResolveBlock)resolve andPromiseReject:(RCTPromiseRejectBlock)reject;
+- (void)signalBackgroundMessageHandlerSet;
 
-- (void)application:(UIApplication *)application didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken;
+- (void)setPromiseResolve:(RCTPromiseResolveBlock)resolve
+         andPromiseReject:(RCTPromiseRejectBlock)reject;
 
-- (void)application:(UIApplication *)application didFailToRegisterForRemoteNotificationsWithError:(NSError *)error;
+- (void)application:(UIApplication *)application
+    didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken;
 
-- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
+- (void)application:(UIApplication *)application
+    didFailToRegisterForRemoteNotificationsWithError:(NSError *)error;
+
+- (void)application:(UIApplication *)application
+    didReceiveRemoteNotification:(NSDictionary *)userInfo
+          fetchCompletionHandler:(void (^)(UIBackgroundFetchResult result))completionHandler;
 
 @end
 

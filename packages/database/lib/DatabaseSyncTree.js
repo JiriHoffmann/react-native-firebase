@@ -16,9 +16,9 @@
  */
 
 import { isString } from '@react-native-firebase/app/lib/common';
+import { getReactNativeModule } from '@react-native-firebase/app/lib/internal/nativeModule';
 import NativeError from '@react-native-firebase/app/lib/internal/NativeFirebaseError';
 import SharedEventEmitter from '@react-native-firebase/app/lib/internal/SharedEventEmitter';
-import { NativeModules } from 'react-native';
 import DatabaseDataSnapshot from './DatabaseDataSnapshot';
 
 class DatabaseSyncTree {
@@ -26,11 +26,30 @@ class DatabaseSyncTree {
     this._tree = {};
     this._reverseLookup = {};
 
+    // we need to be able to register multiple listeners for a single event,
+    // *then delete a specific single listener for that event*, so we have to
+    // be able to identify specific listeners for removal which means we need
+    // to mirror the private registration accounting from upstream EventEmitter
+    // so we have access here and can do our single emitter removal
+    // This is a map of emitter-key <-> set of listener registrations
+    // The listener registrations have { context, listener, remove() }
+    this._registry = {};
+
     SharedEventEmitter.addListener('database_sync_event', this._handleSyncEvent.bind(this));
   }
 
   get native() {
-    return NativeModules.RNFBDatabaseQueryModule;
+    return getReactNativeModule('RNFBDatabaseQueryModule');
+  }
+
+  // from upstream EventEmitter: initialize registrations for an emitter key
+  _allocate(registry, eventType) {
+    let registrations = registry[eventType];
+    if (registrations == null) {
+      registrations = new Set();
+      registry[eventType] = registrations;
+    }
+    return registrations;
   }
 
   /**
@@ -132,6 +151,13 @@ class DatabaseSyncTree {
     if (isString(registrations)) {
       this.removeRegistration(registrations);
       SharedEventEmitter.removeAllListeners(registrations);
+
+      // mirror upstream accounting - clear out all registrations for this key
+      if (registrations == null) {
+        this._registry = {};
+      } else {
+        delete this._registry[registrations];
+      }
       return 1;
     }
 
@@ -141,6 +167,12 @@ class DatabaseSyncTree {
     for (let i = 0, len = registrations.length; i < len; i++) {
       this.removeRegistration(registrations[i]);
       SharedEventEmitter.removeAllListeners(registrations[i]);
+      // mirror upstream accounting - clear out all registrations for this key
+      if (registrations[i] == null) {
+        this._registry = {};
+      } else {
+        delete this._registry[registrations[i]];
+      }
     }
 
     return registrations.length;
@@ -161,7 +193,13 @@ class DatabaseSyncTree {
 
     for (let i = 0, len = registrations.length; i < len; i++) {
       const registration = registrations[i];
-      const subscriptions = SharedEventEmitter._subscriber.getSubscriptionsForType(registration);
+      let subscriptions;
+
+      // get all registrations for this key so we can find our specific listener
+      const registrySubscriptionsSet = this._registry[registration];
+      if (registrySubscriptionsSet) {
+        subscriptions = Array.from(registrySubscriptionsSet);
+      }
 
       if (subscriptions) {
         for (let j = 0, l = subscriptions.length; j < l; j++) {
@@ -169,6 +207,7 @@ class DatabaseSyncTree {
           // The subscription may have been removed during this event loop.
           // its listener matches the listener in method parameters
           if (subscription && subscription.listener === listener) {
+            this._registry[registration].delete(subscription);
             subscription.remove();
             removed.push(registration);
             this.removeRegistration(registration);
@@ -263,11 +302,16 @@ class DatabaseSyncTree {
 
     if (once) {
       const subscription = SharedEventEmitter.addListener(eventRegistrationKey, event => {
-        this._onOnceRemoveRegistration(eventRegistrationKey, listener, event);
+        this._onOnceRemoveRegistration(eventRegistrationKey, listener)(event);
         subscription.remove();
       });
     } else {
-      SharedEventEmitter.addListener(eventRegistrationKey, listener);
+      const registration = SharedEventEmitter.addListener(eventRegistrationKey, listener);
+
+      // add this listener registration info to our emitter-key map
+      // in case we need to identify and remove a specific listener later
+      const registrations = this._allocate(this._registry, eventRegistrationKey);
+      registrations.add(registration);
     }
 
     return eventRegistrationKey;

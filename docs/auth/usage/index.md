@@ -3,7 +3,7 @@ title: Authentication
 description: Installation and getting started with Authentication.
 icon: //static.invertase.io/assets/firebase/authentication.svg
 next: /auth/social-auth
-previous: /analytics/screen-tracking
+previous: /app-distribution/usage
 ---
 
 # Installation
@@ -50,7 +50,7 @@ render of our main application whilst the connection is established:
 ```jsx
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import auth from '@react-native-firebase/auth';
+import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 
 function App() {
   // Set an initializing state whilst Firebase connects
@@ -58,13 +58,13 @@ function App() {
   const [user, setUser] = useState();
 
   // Handle user state changes
-  function onAuthStateChanged(user) {
+  function handleAuthStateChanged(user) {
     setUser(user);
     if (initializing) setInitializing(false);
   }
 
   useEffect(() => {
-    const subscriber = auth().onAuthStateChanged(onAuthStateChanged);
+    const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
     return subscriber; // unsubscribe on unmount
   }, []);
 
@@ -110,10 +110,9 @@ allowing you to integrate with other services such as Analytics by providing a u
 Ensure the "Anonymous" sign-in provider is enabled on the [Firebase Console](https://console.firebase.google.com/project/_/authentication/providers).
 
 ```js
-import auth from '@react-native-firebase/auth';
+import { getAuth, signInAnonymously } from '@react-native-firebase/auth';
 
-auth()
-  .signInAnonymously()
+signInAnonymously(getAuth())
   .then(() => {
     console.log('User signed in anonymously');
   })
@@ -130,7 +129,7 @@ Once successfully signed in, any [`onAuthStateChanged`](#listening-to-authentica
 with the [`User`](/reference/auth/user) details.
 
 In case any errors occur, the module provides support for identifying what specifically went wrong by attaching a code
-to the error. For a full list of error codes available, view the [Firebase documentation](https://firebase.google.com/docs/reference/js/firebase.auth.Auth#error-codes_9).
+to the error. For a full list of error codes available, view the [Firebase documentation](https://firebase.google.com/docs/reference/js/auth.md#autherrorcodes).
 
 ## Email/Password sign-in
 
@@ -144,10 +143,9 @@ The `createUserWithEmailAndPassword` performs two operations; first creating the
 then signing them in.
 
 ```js
-import auth from '@react-native-firebase/auth';
+import { getAuth, createUserWithEmailAndPassword } from '@react-native-firebase/auth';
 
-auth()
-  .createUserWithEmailAndPassword('jane.doe@example.com', 'SuperSecretPassword!')
+createUserWithEmailAndPassword(getAuth(), 'jane.doe@example.com', 'SuperSecretPassword!')
   .then(() => {
     console.log('User account created & signed in!');
   })
@@ -168,22 +166,26 @@ Once successfully created and/or signed in, any [`onAuthStateChanged`](#listenin
 with the [`User`](/reference/auth/user) details.
 
 In case any errors occur, the module provides support for identifying what specifically went wrong by attaching a code
-to the error. For a full list of error codes available, view the [Firebase documentation](https://firebase.google.com/docs/reference/js/firebase.auth.Auth#error-codes_3).
+to the error. For a full list of error codes available, view the [Firebase documentation](https://firebase.google.com/docs/reference/js/auth.md#autherrorcodes).
+
+## Authenticate with backend server
+
+The user's token should be used for authentication with your backend systems. The token is fetched with the [getIdToken](https://rnfirebase.io/reference/auth/user#getIdToken) method. As mentioned in the [Firebase documentation](https://firebase.google.com/docs/auth/web/manage-users#get_a_users_profile), the uid should not be used for authentication.
 
 ## Signing out
 
 If you'd like to sign the user out of their current authentication state, call the `signOut` method:
 
 ```js
-import auth from '@react-native-firebase/auth';
+import { getAuth, signOut } from '@react-native-firebase/auth';
 
-auth()
-  .signOut()
-  .then(() => console.log('User signed out!'));
+signOut(getAuth()).then(() => console.log('User signed out!'));
 ```
 
-Once successfully created and/or signed in, any [`onAuthStateChanged`](#listening-to-authentication-state) listeners will trigger an event
+Once successfully signed out, any [`onAuthStateChanged`](#listening-to-authentication-state) listeners will trigger an event
 with the `user` parameter being a `null` value.
+
+Additionally, using `GoogleSignin.revokeAccess()` forgets the user. This means that the next time someone signs in, they will see the account selection popup. If you don't use this function, the last account will be automatically used without showing the account selection popup.
 
 ## Other sign-in methods
 
@@ -194,4 +196,5 @@ method:
 - [Facebook Sign-In](/auth/social-auth#facebook).
 - [Twitter Sign-In](/auth/social-auth#twitter).
 - [Google Sign-In](/auth/social-auth#google).
+- [Microsoft Sign-In](/auth/social-auth#microsoft).
 - [Phone Number Sign-In](/auth/phone-auth).

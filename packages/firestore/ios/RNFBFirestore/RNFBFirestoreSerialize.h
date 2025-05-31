@@ -16,16 +16,24 @@
  *
  */
 
-#import <React/RCTBridgeModule.h>
 #import <Firebase/Firebase.h>
+#import <React/RCTBridgeModule.h>
 
 @interface RNFBFirestoreSerialize : NSObject
 
-+ (NSDictionary *)querySnapshotToDictionary:(NSString *)source snapshot:(FIRQuerySnapshot *)snapshot includeMetadataChanges:(BOOL)includeMetadataChanges;
++ (NSDictionary *)querySnapshotToDictionary:(NSString *)source
+                                   snapshot:(FIRQuerySnapshot *)snapshot
+                     includeMetadataChanges:(BOOL)includeMetadataChanges
+                                    appName:(NSString *)appName
+                                 databaseId:(NSString *)databaseId;
 
-+ (NSDictionary *)documentChangeToDictionary:(FIRDocumentChange *)documentChange isMetadataChange:(BOOL)isMetadataChange;
++ (NSDictionary *)documentChangeToDictionary:(FIRDocumentChange *)documentChange
+                            isMetadataChange:(BOOL)isMetadataChange
+                                     appName:(NSString *)appName
+                                  databaseId:(NSString *)databaseId;
 
-+ (NSDictionary *)documentSnapshotToDictionary:(FIRDocumentSnapshot *)snapshot;
++ (NSDictionary *)documentSnapshotToDictionary:(FIRDocumentSnapshot *)snapshot
+                                  firestoreKey:(NSString *)firestoreKey;
 
 + (NSDictionary *)serializeDictionary:(NSDictionary *)dictionary;
 

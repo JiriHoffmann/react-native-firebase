@@ -16,6 +16,7 @@
  */
 
 import { isObject, isString, isUndefined, isBoolean } from '@react-native-firebase/app/lib/common';
+import { warnDynamicLink } from './utils';
 
 export default class User {
   constructor(auth, user) {
@@ -46,6 +47,10 @@ export default class User {
       lastSignInTime: new Date(metadata.lastSignInTime).toISOString(),
       creationTime: new Date(metadata.creationTime).toISOString(),
     };
+  }
+
+  get multiFactor() {
+    return this._user.multiFactor || null;
   }
 
   get phoneNumber() {
@@ -92,9 +97,31 @@ export default class User {
       .then(userCredential => this._auth._setUserCredential(userCredential));
   }
 
+  linkWithPopup(provider) {
+    // call through to linkWithRedirect for shared implementation
+    return this.linkWithRedirect(provider);
+  }
+
+  linkWithRedirect(provider) {
+    return this._auth.native
+      .linkWithProvider(provider.toObject())
+      .then(userCredential => this._auth._setUserCredential(userCredential));
+  }
+
   reauthenticateWithCredential(credential) {
     return this._auth.native
       .reauthenticateWithCredential(credential.providerId, credential.token, credential.secret)
+      .then(userCredential => this._auth._setUserCredential(userCredential));
+  }
+
+  reauthenticateWithPopup(provider) {
+    // call through to reauthenticateWithRedirect for shared implementation
+    return this.reauthenticateWithRedirect(provider);
+  }
+
+  reauthenticateWithRedirect(provider) {
+    return this._auth.native
+      .reauthenticateWithProvider(provider.toObject())
       .then(userCredential => this._auth._setUserCredential(userCredential));
   }
 
@@ -105,6 +132,7 @@ export default class User {
   }
 
   sendEmailVerification(actionCodeSettings) {
+    warnDynamicLink(actionCodeSettings);
     if (isObject(actionCodeSettings)) {
       if (!isString(actionCodeSettings.url)) {
         throw new Error(
@@ -118,6 +146,12 @@ export default class User {
       ) {
         throw new Error(
           "firebase.auth.User.sendEmailVerification(*) 'actionCodeSettings.dynamicLinkDomain' expected a string value.",
+        );
+      }
+
+      if (!isUndefined(actionCodeSettings.linkDomain) && !isString(actionCodeSettings.linkDomain)) {
+        throw new Error(
+          "firebase.auth.User.sendEmailVerification(*) 'actionCodeSettings.linkDomain' expected a string value.",
         );
       }
 
@@ -215,6 +249,7 @@ export default class User {
   }
 
   verifyBeforeUpdateEmail(newEmail, actionCodeSettings) {
+    warnDynamicLink(actionCodeSettings);
     if (!isString(newEmail)) {
       throw new Error(
         "firebase.auth.User.verifyBeforeUpdateEmail(*) 'newEmail' expected a string value.",
@@ -234,6 +269,12 @@ export default class User {
       ) {
         throw new Error(
           "firebase.auth.User.verifyBeforeUpdateEmail(_, *) 'actionCodeSettings.dynamicLinkDomain' expected a string value.",
+        );
+      }
+
+      if (!isUndefined(actionCodeSettings.linkDomain) && !isString(actionCodeSettings.linkDomain)) {
+        throw new Error(
+          "firebase.auth.User.verifyBeforeUpdateEmail(_, *) 'actionCodeSettings.linkDomain' expected a string value.",
         );
       }
 
@@ -306,33 +347,9 @@ export default class User {
     );
   }
 
-  linkWithPopup() {
-    throw new Error(
-      'firebase.auth.User.linkWithPopup() is unsupported by the native Firebase SDKs.',
-    );
-  }
-
-  linkWithRedirect() {
-    throw new Error(
-      'firebase.auth.User.linkWithRedirect() is unsupported by the native Firebase SDKs.',
-    );
-  }
-
   reauthenticateWithPhoneNumber() {
     throw new Error(
       'firebase.auth.User.reauthenticateWithPhoneNumber() is unsupported by the native Firebase SDKs.',
-    );
-  }
-
-  reauthenticateWithPopup() {
-    throw new Error(
-      'firebase.auth.User.reauthenticateWithPopup() is unsupported by the native Firebase SDKs.',
-    );
-  }
-
-  reauthenticateWithRedirect() {
-    throw new Error(
-      'firebase.auth.User.reauthenticateWithRedirect() is unsupported by the native Firebase SDKs.',
     );
   }
 

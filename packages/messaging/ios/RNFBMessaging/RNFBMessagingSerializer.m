@@ -15,10 +15,28 @@
  *
  */
 
-#import <React/RCTConvert.h>
 #import "RNFBMessagingSerializer.h"
+#import <React/RCTConvert.h>
 
 @implementation RNFBMessagingSerializer
+
++ (NSData *)APNSTokenDataFromNSString:(NSString *)token {
+  NSString *string = [token lowercaseString];
+  NSMutableData *data = [NSMutableData new];
+  unsigned char whole_byte;
+  char byte_chars[3] = {'\0', '\0', '\0'};
+  NSUInteger i = 0;
+  NSUInteger length = string.length;
+  while (i < length - 1) {
+    char c = [string characterAtIndex:i++];
+    if (c < '0' || (c > '9' && c < 'a') || c > 'f') continue;
+    byte_chars[0] = c;
+    byte_chars[1] = [string characterAtIndex:i++];
+    whole_byte = strtol(byte_chars, NULL, 16);
+    [data appendBytes:&whole_byte length:1];
+  }
+  return data;
+}
 
 + (NSString *)APNSTokenFromNSData:(NSData *)tokenData {
   const char *data = [tokenData bytes];
@@ -44,7 +62,8 @@
   // message.data
   for (id key in userInfo) {
     // message.messageId
-    if ([key isEqualToString:@"gcm.message_id"] || [key isEqualToString:@"google.message_id"] || [key isEqualToString:@"message_id"]) {
+    if ([key isEqualToString:@"gcm.message_id"] || [key isEqualToString:@"google.message_id"] ||
+        [key isEqualToString:@"message_id"]) {
       message[@"messageId"] = userInfo[key];
       continue;
     }
@@ -62,7 +81,7 @@
     }
 
     // message.from
-    if ([key isEqualToString:@"from"]) {
+    if ([key isEqualToString:@"from"] || [key isEqualToString:@"google.c.sender.id"]) {
       message[@"from"] = userInfo[key];
       continue;
     }
@@ -80,11 +99,7 @@
     }
 
     // build data dict from remaining keys but skip keys that shouldn't be included in data
-    if (
-        [key isEqualToString:@"aps"] ||
-            [key hasPrefix:@"gcm."] ||
-            [key hasPrefix:@"google."]
-        ) {
+    if ([key isEqualToString:@"aps"] || [key hasPrefix:@"gcm."] || [key hasPrefix:@"google."]) {
       continue;
     }
     data[key] = userInfo[key];
@@ -118,7 +133,7 @@
     if (apsDict[@"badge"] != nil) {
       notificationIOS[@"badge"] = apsDict[@"badge"];
     }
-      
+
     // message.notification.*
     if (apsDict[@"alert"] != nil) {
       // can be a string or dictionary
@@ -132,12 +147,12 @@
         if (apsAlertDict[@"title"] != nil) {
           notification[@"title"] = apsAlertDict[@"title"];
         }
-          
+
         // message.notification.titleLocKey
         if (apsAlertDict[@"title-loc-key"] != nil) {
           notification[@"titleLocKey"] = apsAlertDict[@"title-loc-key"];
         }
-          
+
         // message.notification.titleLocArgs
         if (apsAlertDict[@"title-loc-args"] != nil) {
           notification[@"titleLocArgs"] = apsAlertDict[@"title-loc-args"];
@@ -152,33 +167,30 @@
         if (apsAlertDict[@"loc-key"] != nil) {
           notification[@"bodyLocKey"] = apsAlertDict[@"loc-key"];
         }
-          
+
         // message.notification.bodyLocArgs
         if (apsAlertDict[@"loc-args"] != nil) {
           notification[@"bodyLocArgs"] = apsAlertDict[@"loc-args"];
         }
-          
+
         // iOS only
         // message.notification.ios.subtitle
         if (apsAlertDict[@"subtitle"] != nil) {
           notificationIOS[@"subtitle"] = apsAlertDict[@"subtitle"];
         }
-          
+
         // iOS only
         // message.notification.ios.subtitleLocKey
         if (apsAlertDict[@"subtitle-loc-key"] != nil) {
           notificationIOS[@"subtitleLocKey"] = apsAlertDict[@"subtitle-loc-key"];
         }
-          
+
         // iOS only
         // message.notification.ios.subtitleLocArgs
         if (apsAlertDict[@"subtitle-loc-args"] != nil) {
           notificationIOS[@"subtitleLocArgs"] = apsAlertDict[@"subtitle-loc-args"];
         }
       }
-
-      notification[@"ios"] = notificationIOS;
-      message[@"notification"] = notification;
     }
 
     // message.notification.ios.sound
@@ -208,10 +220,13 @@
         // message.notification.ios.sound
         notificationIOS[@"sound"] = notificationIOSSound;
       }
-
-      notification[@"ios"] = notificationIOS;
-      message[@"notification"] = notification;
     }
+  }
+  if ([notificationIOS count] > 0) {
+    notification[@"ios"] = notificationIOS;
+  }
+  if ([notification count] > 0) {
+    message[@"notification"] = notification;
   }
 
   return message;

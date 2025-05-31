@@ -22,6 +22,7 @@ import buildIos from './builders/ios';
 import buildItunes from './builders/itunes';
 import buildNavigation from './builders/navigation';
 import buildSocial from './builders/social';
+import buildOtherPlatform from './builders/otherPlatform';
 
 export default function build(dynamicLinksParams) {
   if (!isObject(dynamicLinksParams)) {
@@ -37,6 +38,7 @@ export default function build(dynamicLinksParams) {
     itunes,
     navigation,
     social,
+    otherPlatform,
   } = dynamicLinksParams;
 
   if (!link) {
@@ -93,6 +95,10 @@ export default function build(dynamicLinksParams) {
 
   if (social) {
     params.social = buildSocial(social);
+  }
+
+  if (otherPlatform) {
+    params.otherPlatform = buildOtherPlatform(otherPlatform);
   }
 
   return params;

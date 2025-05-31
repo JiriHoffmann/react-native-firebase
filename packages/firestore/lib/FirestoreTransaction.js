@@ -15,7 +15,7 @@
  *
  */
 
-import { isObject } from '@react-native-firebase/app/lib/common';
+import { isObject, createDeprecationProxy } from '@react-native-firebase/app/lib/common';
 import FirestoreDocumentReference from './FirestoreDocumentReference';
 import FirestoreDocumentSnapshot from './FirestoreDocumentSnapshot';
 import { parseSetOptions, parseUpdateArgs } from './utils';
@@ -52,7 +52,7 @@ export default class FirestoreTransaction {
     this._calledGetCount++;
     return this._firestore.native
       .transactionGetDocument(this._meta.id, documentRef.path)
-      .then(data => new FirestoreDocumentSnapshot(this._firestore, data));
+      .then(data => createDeprecationProxy(new FirestoreDocumentSnapshot(this._firestore, data)));
   }
 
   /**
@@ -85,7 +85,7 @@ export default class FirestoreTransaction {
     this._commandBuffer.push({
       type: 'SET',
       path: documentRef.path,
-      data: buildNativeMap(data),
+      data: buildNativeMap(data, this._firestore._settings.ignoreUndefinedProperties),
       options: setOptions,
     });
 
@@ -111,7 +111,7 @@ export default class FirestoreTransaction {
     this._commandBuffer.push({
       type: 'UPDATE',
       path: documentRef.path,
-      data: buildNativeMap(data),
+      data: buildNativeMap(data, this._firestore._settings.ignoreUndefinedProperties),
     });
 
     return this;

@@ -22,7 +22,7 @@
 
 **React Native Firebase** is a collection of official React Native modules connecting you to Firebase services; each module is a light-weight JavaScript layer connecting you to the native Firebase SDKs for both iOS and Android.
 
-React Native Firebase is built with four key principals in mind;
+React Native Firebase is built with four key principles in mind;
 
 - 🧪 **Well tested**
   - every module is extensively tested to >95% coverage
@@ -42,9 +42,10 @@ The main package that you interface with is `App` (`@react-native-firebase/app`)
 
 | Name                                                     | Downloads                                                                                                                                                                                       |                                                                                        
 | -------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | 
-| [AdMob](/packages/admob)                                 |               [![badge](https://img.shields.io/npm/dm/@react-native-firebase/admob.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/admob)               |
 | [Analytics](/packages/analytics)                         |           [![badge](https://img.shields.io/npm/dm/@react-native-firebase/analytics.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/analytics)           |
 | [App](/packages/app)                                     |                 [![badge](https://img.shields.io/npm/dm/@react-native-firebase/app.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/app)                 |
+| [App Check](/packages/app-check)                         |               [![badge](https://img.shields.io/npm/dm/@react-native-firebase/app-check.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/app-check)       |
+| [App Distribution](/packages/app-distribution)           |  [![badge](https://img.shields.io/npm/dm/@react-native-firebase/app-distribution.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/app-distribution)      |
 | [Authentication](/packages/auth)                         |                [![badge](https://img.shields.io/npm/dm/@react-native-firebase/auth.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/auth)                |
 | [Cloud Firestore](/packages/firestore)                   |           [![badge](https://img.shields.io/npm/dm/@react-native-firebase/firestore.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/firestore)           |
 | [Cloud Functions](/packages/functions)                   |           [![badge](https://img.shields.io/npm/dm/@react-native-firebase/functions.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/functions)           |
@@ -53,7 +54,7 @@ The main package that you interface with is `App` (`@react-native-firebase/app`)
 | [Crashlytics](/packages/crashlytics)                     |         [![badge](https://img.shields.io/npm/dm/@react-native-firebase/crashlytics.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/crashlytics)         |
 | [Dynamic Links](/packages/dynamic-links)                 |       [![badge](https://img.shields.io/npm/dm/@react-native-firebase/dynamic-links.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/dynamic-links)       |
 | [In-app Messaging](/packages/in-app-messaging)           |    [![badge](https://img.shields.io/npm/dm/@react-native-firebase/in-app-messaging.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/in-app-messaging)    |
-| [Instance ID](/packages/iid)                             |                 [![badge](https://img.shields.io/npm/dm/@react-native-firebase/iid.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/iid)                 |
+| [Installations](/packages/installations)                 |    [![badge](https://img.shields.io/npm/dm/@react-native-firebase/installations.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/installations)          |
 | [ML](/packages/ml)                                       |           [![badge](https://img.shields.io/npm/dm/@react-native-firebase/ml.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/ml)                         |
 | [Performance Monitoring](/packages/perf)                 |                [![badge](https://img.shields.io/npm/dm/@react-native-firebase/perf.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/perf)                |
 | [Realtime Database](/packages/database)                  |            [![badge](https://img.shields.io/npm/dm/@react-native-firebase/database.svg?style=for-the-badge&logo=npm)](https://www.npmjs.com/package/@react-native-firebase/database)            |
@@ -68,12 +69,12 @@ Looking for the Version 5 documentation? [View legacy documentation](https://v5.
 
 ## Contributing
 
-- [Overview](https://rnfirebase.io)
+- [Overview](https://github.com/invertase/react-native-firebase/blob/main/CONTRIBUTING.md)
 - [Issues](https://github.com/invertase/react-native-firebase/issues)
 - [PRs](https://github.com/invertase/react-native-firebase/pulls)
 - [Documentation](https://rnfirebase.io)
-- [Community](https://github.com/invertase/react-native-firebase/blob/master/CONTRIBUTING.md)
-- [Code of Conduct](https://github.com/invertase/meta/blob/master/CODE_OF_CONDUCT.md)
+- [Community](https://github.com/invertase/react-native-firebase/blob/main/CONTRIBUTING.md)
+- [Code of Conduct](https://github.com/invertase/meta/blob/main/CODE_OF_CONDUCT.md)
 
 ## License
 
@@ -81,11 +82,11 @@ Looking for the Version 5 documentation? [View legacy documentation](https://v5.
 
 ---
 
-<p>
-  <img align="left" width="75px" src="https://static.invertase.io/assets/invertase-logo-small.png">
-  <p align="left">
-    Built and maintained with 💛 by <a href="https://invertase.io">Invertase</a>.
+<p align="center">
+  <a href="https://invertase.io/?utm_source=readme&utm_medium=footer&utm_campaign=react-native-firebase">
+    <img width="75px" src="https://static.invertase.io/assets/invertase/invertase-rounded.png">
+  </a>
+  <p align="center">
+    Built and maintained by <a href="https://invertase.io/?utm_source=readme&utm_medium=footer&utm_campaign=react-native-firebase">Invertase</a>.
   </p>
 </p>
-
----

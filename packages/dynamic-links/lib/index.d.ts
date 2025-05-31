@@ -303,6 +303,32 @@ export namespace FirebaseDynamicLinksTypes {
   }
 
   /**
+   * The DynamicLinkOtherPlatformParameters interface provides functionality to
+   * open a custom URL on platforms beside Android and iOS.  This is useful to
+   * specify a different behavior on desktop, like displaying a full web page
+   * of the app content/payload (as specified by param link) with another dynamic
+   * link to install the app.
+   *
+   * #### Example
+   *
+   * ```js
+   *  const link = await firebase.dynamicLinks().buildLink({
+   *    link: 'https://invertase.io',
+   *    domainUriPrefix: 'https://xyz.page.link',
+   *    otherPlatform: {
+   *			fallbackUrl: 'https://www.google.com/',
+   *   	}
+   *  });
+   * ```
+   */
+  export interface DynamicLinkOtherPlatformParameters {
+    /**
+     * The URL to open on desktop.
+     */
+    fallbackUrl?: string;
+  }
+
+  /**
    * The DynamicLinkParameters interface provides access to the Dynamic Link builder classes
    * used to configure a created link.
    *
@@ -359,6 +385,11 @@ export namespace FirebaseDynamicLinksTypes {
      * Access social specific link parameters.
      */
     social?: DynamicLinkSocialParameters;
+
+    /**
+     * Access other platform specific link parameters.
+     */
+    otherPlatform?: DynamicLinkOtherPlatformParameters;
   }
 
   /**
@@ -421,6 +452,13 @@ export namespace FirebaseDynamicLinksTypes {
      * On iOS this returns a string value representing the minimum app version (not the iOS system version).
      */
     minimumAppVersion: number | string | null;
+
+    /**
+     * The potential UTM parameters linked to this dynamic link
+     *
+     * It will only work for short links, not long links
+     */
+    utmParameters: Record<string, string>;
   }
 
   /**
@@ -543,6 +581,15 @@ export namespace FirebaseDynamicLinksTypes {
     onLink(listener: (link: DynamicLink) => void): () => void;
 
     /**
+     * Perform built-in diagnostics on iOS. This is best performed on a real device running
+     * a build from Xcode so you may see the output easily. Alternatively it should be visible
+     * in Console.app with an iPhone plugged into a macOS computer
+     *
+     * NOTE: iOS only
+     */
+    performDiagnostics(): void;
+
+    /**
      * Resolve a given dynamic link (short or long) directly.
      *
      * This mimics the result of external link resolution, app open, and the DynamicLink you
@@ -578,13 +625,14 @@ export const firebase: ReactNativeFirebase.Module & {
   ): ReactNativeFirebase.FirebaseApp & { dynamicLinks(): FirebaseDynamicLinksTypes.Module };
 };
 
+export * from './modular';
+
 export default defaultExport;
 
 /**
  * Attach namespace to `firebase.` and `FirebaseApp.`.
  */
 declare module '@react-native-firebase/app' {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   namespace ReactNativeFirebase {
     import FirebaseModuleWithStatics = ReactNativeFirebase.FirebaseModuleWithStatics;
 

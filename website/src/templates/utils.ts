@@ -27,6 +27,10 @@ function iconForModule(module: string): string {
       return '//static.invertase.io/assets/firebase/google-admob.svg';
     case 'analytics':
       return '//static.invertase.io/assets/firebase/analytics.svg';
+    case 'app-check':
+      return '//static.invertase.io/assets/social/firebase-logo.png';
+    case 'app-distribution':
+      return '/assets/docs/app-distribution/app-distribution.png';
     case 'auth':
       return '//static.invertase.io/assets/firebase/authentication.svg';
     case 'firestore':
@@ -45,6 +49,8 @@ function iconForModule(module: string): string {
       return '//static.invertase.io/assets/firebase/dynamic-links.svg';
     case 'in-app-messaging':
       return '//static.invertase.io/assets/firebase/in-app-messaging.svg';
+    case 'installations':
+      return '//static.invertase.io/assets/social/firebase-logo.png';
     case 'ml':
       return '//static.invertase.io/assets/firebase/ml-kit.svg';
     case 'remote-config':

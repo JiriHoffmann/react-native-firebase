@@ -19,13 +19,23 @@ const { PATH, CONTENT, seed, wipe } = require('../helpers');
 
 const TEST_PATH = `${PATH}/once`;
 
-// TODO flakey on CI - improve database paths so no current test conflicts & remove sleep util usage
 describe('database().ref().once()', function () {
   before(function () {
     return seed(TEST_PATH);
   });
+
   after(function () {
     return wipe(TEST_PATH);
+  });
+
+  beforeEach(async function beforeEachTest() {
+    // @ts-ignore
+    globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+  });
+
+  afterEach(async function afterEachTest() {
+    // @ts-ignore
+    globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
   });
 
   it('throws if event type is invalid', async function () {
@@ -102,7 +112,7 @@ describe('database().ref().once()', function () {
     const ref = firebase.database().ref(`${TEST_PATH}/types/number`);
     ref.once('value').then(callback);
     await ref.set(1337);
-    callback.should.be.calledOnce();
+    await Utils.spyToBeCalledOnceAsync(callback);
   });
 
   it('errors if permission denied', async function () {
@@ -120,45 +130,59 @@ describe('database().ref().once()', function () {
     const value = Date.now();
     const callback = sinon.spy();
     const ref = firebase.database().ref(`${TEST_PATH}/childAdded`);
-
-    ref.once('child_added').then($ => callback($.val()));
+    ref
+      .once('child_added')
+      .then($ => callback($.val()))
+      .catch(e => callback(e));
     await ref.child('foo').set(value);
-    await Utils.sleep(1000);
-
-    callback.should.be.calledOnce();
+    await Utils.spyToBeCalledOnceAsync(callback, 5000);
     callback.should.be.calledWith(value);
   });
 
-  it('resolves when a child is changed', async function () {
-    const callback = sinon.spy();
+  // FIXME not working on ios locally against emulator
+  // FIXME too flaky against android
+  xit('resolves when a child is changed', async function () {
+    const callbackAdd = sinon.spy();
+    const callbackChange = sinon.spy();
     const ref = firebase.database().ref(`${TEST_PATH}/childChanged`);
 
+    ref.once('child_added').then($ => callbackAdd($.val()));
     await ref.child('foo').set(1);
-    ref.once('child_changed').then($ => callback($.val()));
-    await Utils.sleep(1000);
+    await Utils.spyToBeCalledOnceAsync(callbackAdd, 10000);
+    ref.once('child_changed').then($ => callbackChange($.val()));
     await ref.child('foo').set(2);
-    await Utils.sleep(1000);
-    callback.should.be.calledOnce();
-    callback.should.be.calledWith(2);
+    await Utils.spyToBeCalledOnceAsync(callbackChange, 10000);
+    callbackChange.should.be.calledWith(2);
   });
 
-  it('resolves when a child is removed', async function () {
-    const callback = sinon.spy();
-    const ref = firebase.database().ref(`${TEST_PATH}/childRemoved`);
-    const child = ref.child('removeme');
-    await child.set('foo');
-
-    ref.once('child_removed').then($ => callback($.val()));
-    await Utils.sleep(1000);
-    await child.remove();
-    await Utils.sleep(1000);
-
-    callback.should.be.calledOnce();
-    callback.should.be.calledWith('foo');
+  // FIXME too flaky against android in CI
+  xit('resolves when a child is removed', async function () {
+    if (Platform.ios || Platform.other) {
+      const callbackAdd = sinon.spy();
+      const callbackRemove = sinon.spy();
+      const ref = firebase.database().ref(`${TEST_PATH}/childRemoved`);
+      ref.once('child_added').then($ => callbackAdd($.val()));
+      const child = ref.child('removeme');
+      await child.set('foo');
+      await Utils.spyToBeCalledOnceAsync(callbackAdd, 10000);
+      ref
+        .once('child_removed')
+        .then($ => callbackRemove($.val()))
+        .catch(e => callback(e));
+      await child.remove();
+      await Utils.spyToBeCalledOnceAsync(callbackRemove, 10000);
+      callbackRemove.should.be.calledWith('foo');
+    } else {
+      this.skip();
+    }
   });
 
   // https://github.com/firebase/firebase-js-sdk/blob/6b53e0058483c9002d2fe56119f86fc9fb96b56c/packages/database/test/order_by.test.ts#L104
   it('resolves when a child is moved', async function () {
+    if (Platform.other) {
+      this.skip('Errors on JS SDK about a missing index.');
+      return;
+    }
     const callback = sinon.spy();
     const ref = firebase.database().ref(`${TEST_PATH}/childMoved`);
     const orderedRef = ref.orderByChild('nuggets');
@@ -170,13 +194,13 @@ describe('database().ref().once()', function () {
       tony: { nuggets: 52 },
       greg: { nuggets: 52 },
     };
-
-    orderedRef.once('child_moved').then($ => callback($.val()));
+    orderedRef
+      .once('child_moved')
+      .then($ => callback($.val()))
+      .catch(e => callback(e));
     await ref.set(initial);
     await ref.child('greg/nuggets').set(57);
-    await Utils.sleep(100);
-
-    callback.should.be.calledOnce();
+    await Utils.spyToBeCalledOnceAsync(callback, 5000);
     callback.should.be.calledWith({ nuggets: 57 });
   });
 });

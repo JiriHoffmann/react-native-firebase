@@ -15,12 +15,29 @@
  *
  */
 
-const { PATH } = require('../helpers');
+const { PATH, seed, wipe } = require('../helpers');
 
 const TEST_PATH = `${PATH}/on`;
 
-// TODO flakey on CI - improve database paths so no current test conflicts & remove sleep util usage
-xdescribe('database().ref().on()', function () {
+describe('database().ref().on()', function () {
+  before(async function () {
+    await seed(TEST_PATH);
+  });
+
+  after(async function () {
+    await wipe(TEST_PATH);
+  });
+
+  beforeEach(async function beforeEachTest() {
+    // @ts-ignore
+    globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+  });
+
+  afterEach(async function afterEachTest() {
+    // @ts-ignore
+    globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+  });
+
   it('throws if event type is invalid', async function () {
     try {
       await firebase.database().ref().on('foo');
@@ -71,19 +88,17 @@ xdescribe('database().ref().on()', function () {
       return Promise.resolve();
     }
   });
-  // TODO test flakey on CI - swap out Util.sleep
-  xit('should callback with an initial value', async function () {
+
+  it('should callback with an initial value', async function () {
     const callback = sinon.spy();
     const ref = firebase.database().ref(`${TEST_PATH}/init`);
-    const value = Date.now();
-    await ref.set(value);
-
     ref.on('value', $ => {
       callback($.val());
     });
 
-    await Utils.sleep(500);
-    callback.should.be.calledOnce();
+    const value = Date.now();
+    await ref.set(value);
+    await Utils.spyToBeCalledOnceAsync(callback, 5000);
     callback.should.be.calledWith(value);
 
     ref.off('value');
@@ -91,23 +106,21 @@ xdescribe('database().ref().on()', function () {
 
   it('should callback multiple times when the value changes', async function () {
     const callback = sinon.spy();
-    const ref = firebase.database().ref(`${TEST_PATH}/changes`);
-    await ref.set('foo');
-
+    const date = Date.now();
+    const ref = firebase.database().ref(`${TEST_PATH}/multi-change/${date}`);
     ref.on('value', $ => {
       callback($.val());
     });
-
-    await Utils.sleep(500);
+    await ref.set('foo');
+    await Utils.sleep(100);
     await ref.set('bar');
-    await Utils.sleep(500);
-
+    await Utils.spyToBeCalledTimesAsync(callback, 2);
     ref.off('value');
-    callback.should.be.calledTwice();
     callback.getCall(0).args[0].should.equal('foo');
     callback.getCall(1).args[0].should.equal('bar');
   });
 
+  // the cancelCallback is never called for ref.on but ref.once works?
   it('should cancel when something goes wrong', async function () {
     const successCallback = sinon.spy();
     const cancelCallback = sinon.spy();
@@ -125,68 +138,78 @@ xdescribe('database().ref().on()', function () {
         cancelCallback();
       },
     );
-
-    await Utils.sleep(1200); // takes a while to call at times
+    await Utils.spyToBeCalledOnceAsync(cancelCallback);
     ref.off('value');
     successCallback.should.be.callCount(0);
-    cancelCallback.should.be.calledOnce();
   });
 
+  // FIXME super flaky on android emulator
   it('subscribe to child added events', async function () {
-    const successCallback = sinon.spy();
-    const cancelCallback = sinon.spy();
-    const ref = firebase.database().ref(`${TEST_PATH}/childAdded`);
+    if (Platform.ios || Platform.other) {
+      const successCallback = sinon.spy();
+      const cancelCallback = sinon.spy();
+      const ref = firebase.database().ref(`${TEST_PATH}/childAdded`);
 
-    ref.on(
-      'child_added',
-      $ => {
-        successCallback($.val());
-      },
-      () => {
-        cancelCallback();
-      },
-    );
+      ref.on(
+        'child_added',
+        $ => {
+          successCallback($.val());
+        },
+        () => {
+          cancelCallback();
+        },
+      );
 
-    await Utils.sleep(500);
-    await ref.child('child1').set('foo');
-    await ref.child('child2').set('bar');
-    await Utils.sleep(500);
-    ref.off('child_added');
-    successCallback.should.be.callCount(2);
-    successCallback.getCall(0).args[0].should.equal('foo');
-    successCallback.getCall(1).args[0].should.equal('bar');
-    cancelCallback.should.be.callCount(0);
+      await ref.child('child1').set('foo');
+      await ref.child('child2').set('bar');
+      await Utils.spyToBeCalledTimesAsync(successCallback, 2);
+      ref.off('child_added');
+      successCallback.getCall(0).args[0].should.equal('foo');
+      successCallback.getCall(1).args[0].should.equal('bar');
+      cancelCallback.should.be.callCount(0);
+    } else {
+      this.skip();
+    }
   });
 
+  // FIXME super flaky on Jet for ios/android
   it('subscribe to child changed events', async function () {
-    const successCallback = sinon.spy();
-    const cancelCallback = sinon.spy();
-    const ref = firebase.database().ref(`${TEST_PATH}/childChanged`);
-    const child = ref.child('changeme');
-    await child.set('foo');
+    if (Platform.other) {
+      this.skip('Errors on JS SDK about a missing index.');
+      return;
+    }
+    this.skip('Flakey');
+    return;
+    if (Platform.other) {
+      const successCallback = sinon.spy();
+      const cancelCallback = sinon.spy();
+      const ref = firebase.database().ref(`${TEST_PATH}/childChanged`);
+      const child = ref.child('changeme');
+      await child.set('foo');
 
-    ref.on(
-      'child_changed',
-      $ => {
-        successCallback($.val());
-      },
-      () => {
-        cancelCallback();
-      },
-    );
+      ref.on(
+        'child_changed',
+        $ => {
+          successCallback($.val());
+        },
+        () => {
+          cancelCallback();
+        },
+      );
 
-    const value1 = Date.now();
-    const value2 = Date.now() + 123;
+      const value1 = Date.now();
+      const value2 = Date.now() + 123;
 
-    await Utils.sleep(500);
-    await child.set(value1);
-    await child.set(value2);
-    await Utils.sleep(500);
-    ref.off('child_changed');
-    successCallback.should.be.callCount(2);
-    successCallback.getCall(0).args[0].should.equal(value1);
-    successCallback.getCall(1).args[0].should.equal(value2);
-    cancelCallback.should.be.callCount(0);
+      await child.set(value1);
+      await child.set(value2);
+      await Utils.spyToBeCalledTimesAsync(successCallback, 2);
+      ref.off('child_changed');
+      successCallback.getCall(0).args[0].should.equal(value1);
+      successCallback.getCall(1).args[0].should.equal(value2);
+      cancelCallback.should.be.callCount(0);
+    } else {
+      this.skip();
+    }
   });
 
   it('subscribe to child removed events', async function () {
@@ -195,7 +218,7 @@ xdescribe('database().ref().on()', function () {
     const ref = firebase.database().ref(`${TEST_PATH}/childRemoved`);
     const child = ref.child('removeme');
     await child.set('foo');
-
+    await Utils.sleep(250);
     ref.on(
       'child_removed',
       $ => {
@@ -205,17 +228,19 @@ xdescribe('database().ref().on()', function () {
         cancelCallback();
       },
     );
-
-    await Utils.sleep(500);
+    await Utils.sleep(250);
     await child.remove();
-    await Utils.sleep(500);
+    await Utils.spyToBeCalledOnceAsync(successCallback, 5000);
     ref.off('child_removed');
-    successCallback.should.be.callCount(1);
     successCallback.getCall(0).args[0].should.equal('foo');
     cancelCallback.should.be.callCount(0);
   });
 
   it('subscribe to child moved events', async function () {
+    if (Platform.other) {
+      this.skip('Errors on JS SDK about a missing index.');
+      return;
+    }
     const callback = sinon.spy();
     const ref = firebase.database().ref(`${TEST_PATH}/childMoved`);
     const orderedRef = ref.orderByChild('nuggets');
@@ -235,9 +260,8 @@ xdescribe('database().ref().on()', function () {
     await ref.set(initial);
     await ref.child('greg/nuggets').set(57);
     await ref.child('rob/nuggets').set(61);
-    await Utils.sleep(500);
+    await Utils.spyToBeCalledTimesAsync(callback, 2);
     ref.off('child_moved');
-    callback.should.be.calledTwice();
     callback.getCall(0).args[0].should.be.eql(jet.contextify({ nuggets: 57 }));
     callback.getCall(1).args[0].should.be.eql(jet.contextify({ nuggets: 61 }));
   });

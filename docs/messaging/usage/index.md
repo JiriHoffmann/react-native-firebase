@@ -2,7 +2,7 @@
 title: Cloud Messaging
 description: Installation and getting started with Cloud Messaging.
 icon: //static.invertase.io/assets/firebase/cloud-messaging.svg
-next: /messaging/ios-permissions
+next: /messaging/usage/ios-setup
 previous: /functions/writing-deploying-functions
 ---
 
@@ -29,6 +29,50 @@ cd ios/ && pod install
 
 If you're using an older version of React Native without auto-linking support, or wish to integrate into an existing project,
 you can follow the manual installation steps for [iOS](/messaging/usage/installation/ios) and [Android](/messaging/usage/installation/android).
+
+# Expo
+
+## iOS - Notifications entitlement
+
+Since Expo SDK51, Notifications entitlement is no longer always added to iOS projects during prebuild. If your project uses push notifications, you may need to add the aps-environment entitlement to your app config:
+
+```json
+{
+  "expo": {
+    "ios": {
+      "entitlements": {
+        "aps-environment": “production”
+      }
+    }
+  }
+}
+```
+
+## iOS - Remote notification
+
+If you require `remote notification` on Expo, you can also add this to your Expo `app.json` or `app.config.js`
+
+```json
+{
+  "expo": {
+    "ios": {
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
+    }
+  }
+}
+```
+
+## Android - Google Play Notification Delegation
+
+If you use the REST v1 APIs (used by the Firebase admin SDKs) and your app is running on Android Q+ with current Google Play services, Google implemented "Notification Delegation" for messages. Notification delegation is not currently compatible with react-native-firebase. Specifically, if your notifications are delegated via proxy to Play Services, then your messaging listeners will not be called.
+
+To work around this incompatibility, react-native-firebase disables notification delegation by default currently, using the `AndroidManifest.xml` method listed as one of the options described here: <https://firebase.google.com/docs/cloud-messaging/android/message-priority#proxy>.
+
+You may re-enable notification delegation if your use case requires it and you can accept the messaging listener methods not executing for delegated messages by altering the firebase.json setting `messaging_android_notification_delegation_enabled` to `true`.
+
+You may also use the new messaging APIs to get and set the notification delegation state for the app, as desired.
 
 # What does it do
 
@@ -68,11 +112,18 @@ async function requestUserPermission() {
 The permissions API for iOS provides much more fine-grain control over permissions and how they're handled within your
 application. To learn more, view the advanced [iOS Permissions](/messaging/ios-permissions) documentation.
 
-On Android, you do not need to request user permission. This method can still be called on Android devices; however, and will always resolve successfully.
+## Android - Requesting permissions
+
+On Android API level 32 and below, you do not need to request user permission. This method can still be called on Android devices; however, and will always resolve successfully. For API level 33+ you will need to request the permission manually using either the built-in react-native `PermissionsAndroid` APIs or a related module such as `react-native-permissions`
+
+```
+  import {PermissionsAndroid} from 'react-native';
+  PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+```
 
 ## Receiving messages
 
-FCM messages can be sent to *real* Android/iOS devices and Android emulators (iOS simulators however do *not* handle cloud messages) via a number of methods (see below).
+FCM messages can be sent to _real_ Android/iOS devices and Android emulators (iOS simulators however do _not_ handle cloud messages) via a number of methods (see below).
 A message is simply a payload of data which can be used however you see fit within your application.
 
 Common use-cases for handling messages could be:
@@ -90,7 +141,7 @@ scenarios, it is first important to establish the various states a device can be
 | State          | Description                                                                                                                                                                                               |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Foreground** | When the application is open and in view.                                                                                                                                                                 |
-| **Background** | When the application is open, however in the background (minimised). This typically occurs when the user has pressed the "home" button on the device or has switched to another app via the app switcher. |
+| **Background** | When the application is open, however in the background (minimized). This typically occurs when the user has pressed the "home" button on the device or has switched to another app via the app switcher. |
 | **Quit**       | When the device is locked or application is not active or running. The user can quit an app by "swiping it away" via the app switcher UI on the device.                                                   |
 
 The user must have opened the app before messages can be received. If the user force quits the app from the device settings, it must be re-opened again before receiving messages.
@@ -110,6 +161,10 @@ The device state and message contents determines which handler will be called:
 - In cases where the message is data-only and the device is in the background or quit, both Android & iOS treat the message
   as low priority and will ignore it (i.e. no event will be sent). You can however increase the priority by setting the `priority` to `high` (Android) and
   `content-available` to `true` (iOS) properties on the payload.
+
+- On iOS in cases where the message is data-only and the device is in the background or quit, the message will be delayed
+  until the background message handler is registered via setBackgroundMessageHandler, signaling the application's javascript
+  is loaded and ready to run.
 
 To learn more about how to send these options in your message payload, view the Firebase documentation for your [FCM API implementation](https://firebase.google.com/docs/cloud-messaging/concept-options).
 
@@ -156,6 +211,8 @@ will not show any notification to the user. Instead, you could trigger a [local 
 or update the in-app UI to signal a new notification.
 
 ### Background & Quit state messages
+
+> Note: If you use @notifee/react-native, since v7.0.0, `onNotificationOpenedApp` and `getInitialNotification` will no longer trigger as notifee will handle the event.
 
 When the application is in a background or quit state, the `onMessage` handler will not be called when receiving messages.
 Instead, you need to setup a background callback handler via the `setBackgroundMessageHandler` method.
@@ -216,25 +273,25 @@ For iOS specific "data-only" messages, the message must include the appropriate 
 
 ```js
 admin.messaging().send({
-    data: {
-      //some data
-    },
-    apns: {
-      payload: {
-        aps: {
-          contentAvailable: true
-        }
+  data: {
+    //some data
+  },
+  apns: {
+    payload: {
+      aps: {
+        contentAvailable: true,
       },
-      headers: {
-        'apns-push-type': 'background',
-        'apns-priority': '5',
-        'apns-topic': '' // your app bundle identifier
-      }
     },
-    //must include token, topic, or condition
-    //token: //device token
-    //topic: //notification topic
-    //condition: //notification condition
+    headers: {
+      'apns-push-type': 'background',
+      'apns-priority': '5',
+      'apns-topic': '', // your app bundle identifier
+    },
+  },
+  //must include token, topic, or condition
+  //token: //device token
+  //topic: //notification topic
+  //condition: //notification condition
 });
 ```
 
@@ -250,26 +307,30 @@ Although the library supports handling messages in background/quit states, the u
 On Android, a [Headless JS](https://reactnative.dev/docs/headless-js-android) task (an Android only feature) is created that runs separately to your main React component; allowing your background handler code to run without mounting your root component.
 
 On iOS however, when a message is received the device silently starts your application in a background state. At this point, your background handler (via `setBackgroundMessageHandler`) is triggered, but your root React component also gets mounted. This can be problematic for some users since any side-effects will be called inside of your app (e.g. `useEffects`, analytics events/triggers etc). To get around this problem,
-you can configure your `AppDelegate.m` file (see instructions below) to inject a `isHeadless` prop into your root component.  Use this property to conditionally render `null` ("nothing") if your app is launched in the background:
+you can configure your `AppDelegate.m` file (see instructions below) to inject a `isHeadless` prop into your root component. Use this property to conditionally render `null` ("nothing") if your app is launched in the background:
 
 ```jsx
 // index.js
 import { AppRegistry } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 
+// Handle background messages using setBackgroundMessageHandler
 messaging().setBackgroundMessageHandler(async remoteMessage => {
   console.log('Message handled in the background!', remoteMessage);
 });
 
+// Check if app was launched in the background and conditionally render null if so
 function HeadlessCheck({ isHeadless }) {
   if (isHeadless) {
     // App has been launched in the background by iOS, ignore
     return null;
   }
 
+  // Render the app component on foreground launch
   return <App />;
 }
 
+// Your main application component defined here
 function App() {
   // Your application
 }
@@ -287,25 +348,28 @@ To inject a `isHeadless` prop into your app, please update your `AppDelegate.m` 
 // Use `addCustomPropsToUserProps` to pass in props for initialization of your app
 // Or pass in `nil` if you have none as per below example
 // For `withLaunchOptions` please pass in `launchOptions` object
-NSDictionary *appProperties = [RNFBMessagingModule addCustomPropsToUserProps:nil withLaunchOptions:launchOptions];
+// and use it to set `self.initialProps` (available with react-native >= 0.71.1, older versions need a more difficult style, upgrading is recommended)
 
-// Find the `RCTRootView` instance and update the `initialProperties` with your `appProperties` instance
-RCTRootView *rootView = [[RCTRootView alloc] initWithBridge:bridge
-                                             moduleName:@"nameOfYourApp"
-                                             initialProperties:appProperties];
+self.initialProps = [RNFBMessagingModule addCustomPropsToUserProps:nil withLaunchOptions:launchOptions];
 ```
 
 - For projects that use react-native-navigation (or if you just don't want to mess with your launchProperties) you can use the `getIsHeadless` method (iOS only) from messaging like so:
 
 ```jsx
-messaging().getIsHeadless().then(isHeadless => {
-  // do sth with isHeadless
-});
-
+messaging()
+  .getIsHeadless()
+  .then(isHeadless => {
+    // do sth with isHeadless
+  });
 ```
 
-
 On Android, the `isHeadless` prop will not exist.
+
+#### iOS Background Limitation
+
+On iOS devices, the user is able to toggle Background App Refresh in device's Settings. Furthermore, the Background App Refresh setting will automatically be off if the device is in low power mode.
+
+If the iOS Background App Refresh mode is off, your handler configured in `setBackgroundMessageHandler` will not be triggered.
 
 ### Topics
 
@@ -329,7 +393,7 @@ documentation.
 
 #### Subscribing to topics
 
-To subscribe a device, call the `subscribeToTopic` method with the topic name:
+To subscribe a device, call the `subscribeToTopic` method with the topic name (must not include "/"):
 
 ```js
 messaging()
@@ -373,6 +437,20 @@ import messaging from '@react-native-firebase/messaging';
 
 async function registerAppWithFCM() {
   await messaging().registerDeviceForRemoteMessages();
+}
+```
+
+## Foreground Presentation Options (iOS)
+
+React Native Firebase Messaging configures how to present a notification in a foreground app.
+Refer to [UNNotificationPresentationOptions](https://developer.apple.com/documentation/usernotifications/unnotificationpresentationoptions) for the details.
+
+```json
+// <projectRoot>/firebase.json
+{
+  "react-native": {
+    "messaging_ios_foreground_presentation_options": ["badge", "sound", "list", "banner"]
+  }
 }
 ```
 
@@ -434,7 +512,7 @@ On Android, any messages which display a [Notification](/messaging/notifications
 (such as the small icon, title etc). To provide a custom tint color, update the `messaging_android_notification_color` property
 with a Android color resource name.
 
-The library provides a set of [predefined colors](https://github.com/invertase/react-native-firebase/blob/master/packages/messaging/android/src/main/res/values/colors.xml) corresponding to the [HTML colors](https://www.w3schools.com/colors/colors_names.asp) for convenience, for example:
+The library provides a set of [predefined colors](https://github.com/invertase/react-native-firebase/blob/main/packages/messaging/android/src/main/res/values/colors.xml) corresponding to the [HTML colors](https://www.w3schools.com/colors/colors_names.asp) for convenience, for example:
 
 ```json
 // <projectRoot>/firebase.json
@@ -450,7 +528,7 @@ Note that only predefined colors can be used in `firebase.json`. If you want to 
 ```xml
 <!-- <projectRoot>/android/app/src/main/res/values/colors.xml -->
 <resources>
-  <color name="my-custom-color">#123456</color>
+  <color name="my_custom_color">#123456</color>
 </resources>
 
 <!-- <projectRoot>/android/app/src/main/AndroidManifest.xml -->
@@ -462,7 +540,7 @@ Note that only predefined colors can be used in `firebase.json`. If you want to 
 
       <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/my-custom-color"
+            android:resource="@color/my_custom_color"
             tools:replace="android:resource" />
   </application>
 </manifest>

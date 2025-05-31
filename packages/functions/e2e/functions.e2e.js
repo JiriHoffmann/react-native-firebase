@@ -15,19 +15,431 @@
  *
  */
 
-const { SAMPLE_DATA } = require('@react-native-firebase/private-tests-firebase-functions');
+// Keep this in sync with the data in:
+// https://github.com/invertase/react-native-firebase/blob/main/.github/workflows/scripts/functions/src/sample-data.ts
+const SAMPLE_DATA = {
+  number: 1234,
+  string: 'acde',
+  boolean: true,
+  null: null,
+  object: {
+    number: 1234,
+    string: 'acde',
+    boolean: true,
+    null: null,
+  },
+  array: [1234, 'acde', true, null],
+  deepObject: {
+    array: [1234, 'acde', false, null],
+    object: {
+      number: 1234,
+      string: 'acde',
+      boolean: true,
+      null: null,
+      array: [1234, 'acde', true, null],
+    },
+    number: 1234,
+    string: 'acde',
+    boolean: true,
+    null: null,
+  },
+  deepArray: [
+    1234,
+    'acde',
+    true,
+    null,
+    [1234, 'acde', true, null],
+    {
+      number: 1234,
+      string: 'acde',
+      boolean: true,
+      null: null,
+      array: [1234, 'acde', true, null],
+    },
+  ],
+  deepMap: {
+    number: 123,
+    string: 'foo',
+    booleanTrue: true,
+    booleanFalse: false,
+    null: null,
+    list: ['1', 2, true, false],
+    map: {
+      number: 123,
+      string: 'foo',
+      booleanTrue: true,
+      booleanFalse: false,
+      null: null,
+    },
+  },
+  deepList: [
+    '1',
+    2,
+    true,
+    false,
+    ['1', 2, true, false],
+    {
+      number: 123,
+      string: 'foo',
+      booleanTrue: true,
+      booleanFalse: false,
+      null: null,
+    },
+  ],
+};
 
-describe('functions()', function () {
-  describe('namespace', function () {
+describe('functions() modular', function () {
+  describe('firebase v8 compatibility', function () {
+    beforeEach(async function beforeEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = true;
+    });
+
+    afterEach(async function afterEachTest() {
+      // @ts-ignore
+      globalThis.RNFB_SILENCE_MODULAR_DEPRECATION_WARNINGS = false;
+    });
+
+    describe('namespace', function () {
+      it('accepts passing in an FirebaseApp instance as first arg', async function () {
+        const appName = `functionsApp${FirebaseHelpers.id}2`;
+        const platformAppConfig = FirebaseHelpers.app.config();
+        const app = await firebase.initializeApp(platformAppConfig, appName);
+
+        const functionsForApp = firebase.functions(app);
+
+        functionsForApp.app.should.equal(app);
+        functionsForApp.app.name.should.equal(app.name);
+
+        // check from an app
+        app.functions().app.should.equal(app);
+        app.functions().app.name.should.equal(app.name);
+      });
+
+      it('accepts passing in a region string as first arg to an app', async function () {
+        const region = 'europe-west1';
+        const functionsForRegion = firebase.app().functions(region);
+
+        functionsForRegion._customUrlOrRegion.should.equal(region);
+        functionsForRegion.app.should.equal(firebase.app());
+        functionsForRegion.app.name.should.equal(firebase.app().name);
+
+        firebase.app().functions(region).app.should.equal(firebase.app());
+
+        firebase.app().functions(region)._customUrlOrRegion.should.equal(region);
+
+        const functionRunner = functionsForRegion.httpsCallable('testFunctionCustomRegion');
+
+        const response = await functionRunner();
+        response.data.should.equal(region);
+      });
+
+      it('accepts passing in a custom url string as first arg to an app', async function () {
+        const customUrl = 'https://us-central1-react-native-firebase-testing.cloudfunctions.net';
+        const functionsForCustomUrl = firebase.app().functions(customUrl);
+
+        functionsForCustomUrl._customUrlOrRegion.should.equal(customUrl);
+        functionsForCustomUrl.app.should.equal(firebase.app());
+        functionsForCustomUrl.app.name.should.equal(firebase.app().name);
+
+        functionsForCustomUrl.app.should.equal(firebase.app());
+
+        functionsForCustomUrl._customUrlOrRegion.should.equal(customUrl);
+
+        const functionRunner = functionsForCustomUrl.httpsCallable('testFunctionDefaultRegionV2');
+
+        const response = await functionRunner();
+        response.data.should.equal('null');
+      });
+    });
+
+    describe('emulator', function () {
+      it('configures functions emulator via deprecated method with no port', async function () {
+        const region = 'us-central1';
+        const fnName = 'helloWorldV2';
+        const functions = firebase.app().functions(region);
+        functions.useFunctionsEmulator('http://localhost');
+        const response = await functions.httpsCallable(fnName)();
+        response.data.should.equal('Hello from Firebase!');
+      });
+
+      it('configures functions emulator via deprecated method with port', async function () {
+        const region = 'us-central1';
+        const fnName = 'helloWorldV2';
+        const functions = firebase.app().functions(region);
+        functions.useFunctionsEmulator('http://localhost:5001');
+        const response = await functions.httpsCallable(fnName)();
+        response.data.should.equal('Hello from Firebase!');
+      });
+
+      it('configures functions emulator', async function () {
+        const region = 'us-central1';
+        const fnName = 'helloWorldV2';
+        const functions = firebase.app().functions(region);
+        functions.useEmulator('localhost', 5001);
+        const response = await functions.httpsCallable(fnName)();
+        response.data.should.equal('Hello from Firebase!');
+      });
+    });
+
+    describe('httpsCallableFromUrl()', function () {
+      it('Calls a function by URL', async function () {
+        let hostname = 'localhost';
+        if (Platform.android) {
+          hostname = '10.0.2.2';
+        }
+        const functionRunner = firebase
+          .functions()
+          .httpsCallableFromUrl(
+            `http://${hostname}:5001/react-native-firebase-testing/us-central1/helloWorldV2`,
+          );
+        const response = await functionRunner();
+        response.data.should.equal('Hello from Firebase!');
+      });
+    });
+
+    describe('httpsCallable(fnName)(args)', function () {
+      it('accepts primitive args: undefined', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner();
+        response.data.should.equal('null');
+      });
+
+      it('accepts primitive args: string', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner('hello');
+        response.data.should.equal('string');
+      });
+
+      it('accepts primitive args: number', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner(123);
+        response.data.should.equal('number');
+      });
+
+      it('accepts primitive args: boolean', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner(true);
+        response.data.should.equal('boolean');
+      });
+
+      it('accepts primitive args: null', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner(null);
+        response.data.should.equal('null');
+      });
+
+      it('accepts array args', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const response = await functionRunner([1, 2, 3, 4]);
+        response.data.should.equal('array');
+      });
+
+      it('accepts object args', async function () {
+        const type = 'object';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
+          type,
+          inputData,
+        });
+        should.deepEqual(outputData, inputData);
+      });
+
+      it('accepts complex nested objects', async function () {
+        const type = 'deepObject';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
+          type,
+          inputData,
+        });
+        should.deepEqual(outputData, inputData);
+      });
+
+      it('accepts complex nested arrays', async function () {
+        const type = 'deepArray';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
+          type,
+          inputData,
+        });
+        should.deepEqual(outputData, inputData);
+      });
+    });
+
+    describe('HttpsError', function () {
+      it('errors return instance of HttpsError', async function () {
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+
+        try {
+          await functionRunner({});
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.equal(e.details, null);
+          e.code.should.equal('invalid-argument');
+          e.message.should.equal('Invalid test requested.');
+        }
+
+        return Promise.resolve();
+      });
+
+      it('HttpsError.details -> allows returning complex data', async function () {
+        let type = 'deepObject';
+        let inputData = SAMPLE_DATA[type];
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'deepArray';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        return Promise.resolve();
+      });
+
+      it('HttpsError.details -> allows returning primitives', async function () {
+        let type = 'number';
+        let inputData = SAMPLE_DATA[type];
+        const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegionV2');
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+          should.deepEqual(e.details, inputData);
+        }
+
+        type = 'string';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'boolean';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'null';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        return Promise.resolve();
+      });
+
+      it('HttpsCallableOptions.timeout will error when timeout is exceeded', async function () {
+        const functionRunner = firebase.functions().httpsCallable('sleeperV2', { timeout: 1000 });
+        try {
+          await functionRunner({ delay: 3000 });
+          return Promise.reject(new Error('Did not throw an Error.'));
+        } catch (error) {
+          if (Platform.other) {
+            error.message.should.containEql('deadline-exceeded');
+          } else {
+            error.message.should.containEql('DEADLINE').containEql('EXCEEDED');
+          }
+          return Promise.resolve();
+        }
+      });
+    });
+  });
+
+  describe('modular', function () {
+    describe('getFunctions', function () {
+      it('pass app as argument', function () {
+        const { getApp } = modular;
+        const { getFunctions } = functionsModular;
+        const functions = getFunctions(getApp());
+        functions.constructor.name.should.be.equal('FirebaseFunctionsModule');
+      });
+
+      it('no app as argument', function () {
+        const { getFunctions } = functionsModular;
+        const functions = getFunctions();
+        functions.constructor.name.should.be.equal('FirebaseFunctionsModule');
+      });
+    });
+
     it('accepts passing in an FirebaseApp instance as first arg', async function () {
-      const appName = `functionsApp${FirebaseHelpers.id}1`;
+      const { initializeApp } = modular;
+      const { getFunctions } = functionsModular;
+      const appName = `functionsApp${FirebaseHelpers.id}3`;
       const platformAppConfig = FirebaseHelpers.app.config();
-      const app = await firebase.initializeApp(platformAppConfig, appName);
+      const app = await initializeApp(platformAppConfig, appName);
+      const functions = getFunctions(app);
 
-      const functionsForApp = firebase.functions(app);
-
-      functionsForApp.app.should.equal(app);
-      functionsForApp.app.name.should.equal(app.name);
+      functions.app.should.equal(app);
+      functions.app.name.should.equal(app.name);
 
       // check from an app
       app.functions().app.should.equal(app);
@@ -35,16 +447,19 @@ describe('functions()', function () {
     });
 
     it('accepts passing in a region string as first arg to an app', async function () {
+      const { getApp } = modular;
+      const { getFunctions } = functionsModular;
       const region = 'europe-west1';
-      const functionsForRegion = firebase.app().functions(region);
+
+      const functionsForRegion = getFunctions(getApp(), region);
 
       functionsForRegion._customUrlOrRegion.should.equal(region);
-      functionsForRegion.app.should.equal(firebase.app());
-      functionsForRegion.app.name.should.equal(firebase.app().name);
+      functionsForRegion.app.should.equal(getApp());
+      functionsForRegion.app.name.should.equal(getApp().name);
 
-      firebase.app().functions(region).app.should.equal(firebase.app());
+      getApp().functions(region).app.should.equal(getApp());
 
-      firebase.app().functions(region)._customUrlOrRegion.should.equal(region);
+      getApp().functions(region)._customUrlOrRegion.should.equal(region);
 
       const functionRunner = functionsForRegion.httpsCallable('testFunctionCustomRegion');
 
@@ -53,250 +468,311 @@ describe('functions()', function () {
     });
 
     it('accepts passing in a custom url string as first arg to an app', async function () {
+      const { getApp } = modular;
+      const { getFunctions } = functionsModular;
       const customUrl = 'https://us-central1-react-native-firebase-testing.cloudfunctions.net';
-      const functionsForCustomUrl = firebase.app().functions(customUrl);
+
+      const functionsForCustomUrl = getFunctions(getApp(), customUrl);
 
       functionsForCustomUrl._customUrlOrRegion.should.equal(customUrl);
-      functionsForCustomUrl.app.should.equal(firebase.app());
-      functionsForCustomUrl.app.name.should.equal(firebase.app().name);
+      functionsForCustomUrl.app.should.equal(getApp());
+      functionsForCustomUrl.app.name.should.equal(getApp().name);
 
-      functionsForCustomUrl.app.should.equal(firebase.app());
+      functionsForCustomUrl.app.should.equal(getApp());
 
       functionsForCustomUrl._customUrlOrRegion.should.equal(customUrl);
 
-      const functionRunner = functionsForCustomUrl.httpsCallable('testFunctionDefaultRegion');
+      const functionRunner = functionsForCustomUrl.httpsCallable('testFunctionDefaultRegionV2');
 
       const response = await functionRunner();
       response.data.should.equal('null');
     });
 
-    it('useFunctionsEmulator', async function () {
-      const region = 'europe-west2';
-      const fnName = 'invertaseReactNativeFirebaseFunctionsEmulator';
-      const functions = firebase.app().functions(region);
-
-      functions.useFunctionsEmulator('http://api.rnfirebase.io');
-
-      const response = await functions.httpsCallable(fnName)();
-
-      response.data.region.should.equal(region);
-      response.data.fnName.should.equal(fnName);
-    });
-  });
-
-  describe('httpsCallable(fnName)(args)', function () {
-    it('accepts primitive args: undefined', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner();
-      response.data.should.equal('null');
-    });
-
-    it('accepts primitive args: string', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner('hello');
-      response.data.should.equal('string');
-    });
-
-    it('accepts primitive args: number', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner(123);
-      response.data.should.equal('number');
-    });
-
-    it('accepts primitive args: boolean', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner(true);
-      response.data.should.equal('boolean');
-    });
-
-    it('accepts primitive args: null', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner(null);
-      response.data.should.equal('null');
-    });
-
-    it('accepts array args', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const response = await functionRunner([1, 2, 3, 4]);
-      response.data.should.equal('array');
-    });
-
-    it('accepts object args', async function () {
-      const type = 'object';
-      const inputData = SAMPLE_DATA[type];
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const { data: outputData } = await functionRunner({
-        type,
-        inputData,
+    describe('emulator', function () {
+      it('configures functions emulator via deprecated method with no port', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable, connectFunctionsEmulator } = functionsModular;
+        const region = 'us-central1';
+        const fnName = 'helloWorldV2';
+        // const functions = firebase.app().functions(region);
+        const functions = getFunctions(getApp(), region);
+        connectFunctionsEmulator(functions, 'localhost', 5001);
+        const response = await httpsCallable(functions, fnName)();
+        response.data.should.equal('Hello from Firebase!');
       });
-      should.deepEqual(outputData, inputData);
-    });
 
-    it('accepts complex nested objects', async function () {
-      const type = 'deepObject';
-      const inputData = SAMPLE_DATA[type];
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const { data: outputData } = await functionRunner({
-        type,
-        inputData,
+      it('configures functions emulator via deprecated method with port', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable, connectFunctionsEmulator } = functionsModular;
+        const region = 'us-central1';
+        const fnName = 'helloWorldV2';
+        const functions = getFunctions(getApp(), region);
+        connectFunctionsEmulator(functions, 'localhost', 5001);
+        const response = await httpsCallable(functions, fnName)();
+        response.data.should.equal('Hello from Firebase!');
       });
-      should.deepEqual(outputData, inputData);
     });
 
-    it('accepts complex nested arrays', async function () {
-      const type = 'deepArray';
-      const inputData = SAMPLE_DATA[type];
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      const { data: outputData } = await functionRunner({
-        type,
-        inputData,
+    describe('httpsCallableFromUrl()', function () {
+      it('Calls a function by URL', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallableFromUrl } = functionsModular;
+
+        let hostname = 'localhost';
+        if (Platform.android) {
+          hostname = '10.0.2.2';
+        }
+        const functions = getFunctions(getApp());
+        const functionRunner = httpsCallableFromUrl(
+          functions,
+          `http://${hostname}:5001/react-native-firebase-testing/us-central1/helloWorldV2`,
+        );
+        const response = await functionRunner();
+        response.data.should.equal('Hello from Firebase!');
       });
-      should.deepEqual(outputData, inputData);
-    });
-  });
-
-  describe('HttpsError', function () {
-    it('errors return instance of HttpsError', async function () {
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-
-      try {
-        await functionRunner({});
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.equal(e.details, null);
-        e.code.should.equal('invalid-argument');
-        e.message.should.equal('Invalid test requested.');
-      }
-
-      return Promise.resolve();
     });
 
-    it('HttpsError.details -> allows returning complex data', async function () {
-      let type = 'deepObject';
-      let inputData = SAMPLE_DATA[type];
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      try {
-        await functionRunner({
+    describe('httpsCallable(fnName)(args)', function () {
+      it('accepts primitive args: undefined', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner();
+        response.data.should.equal('null');
+      });
+
+      it('accepts primitive args: string', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner('hello');
+        response.data.should.equal('string');
+      });
+
+      it('accepts primitive args: number', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner(123);
+        response.data.should.equal('number');
+      });
+
+      it('accepts primitive args: boolean', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner(true);
+        response.data.should.equal('boolean');
+      });
+
+      it('accepts primitive args: null', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner(null);
+        response.data.should.equal('null');
+      });
+
+      it('accepts array args', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const response = await functionRunner([1, 2, 3, 4]);
+        response.data.should.equal('array');
+      });
+
+      it('accepts object args', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const type = 'object';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
           type,
           inputData,
-          asError: true,
         });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.deepEqual(e.details, inputData);
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-      }
+        should.deepEqual(outputData, inputData);
+      });
 
-      type = 'deepArray';
-      inputData = SAMPLE_DATA[type];
-      try {
-        await functionRunner({
+      it('accepts complex nested objects', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const type = 'deepObject';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
           type,
           inputData,
-          asError: true,
         });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.deepEqual(e.details, inputData);
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-      }
+        should.deepEqual(outputData, inputData);
+      });
 
-      return Promise.resolve();
+      it('accepts complex nested arrays', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const type = 'deepArray';
+        const inputData = SAMPLE_DATA[type];
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        const { data: outputData } = await functionRunner({
+          type,
+          inputData,
+        });
+        should.deepEqual(outputData, inputData);
+      });
     });
 
-    it('HttpsError.details -> allows returning primitives', async function () {
-      let type = 'number';
-      let inputData = SAMPLE_DATA[type];
-      const functionRunner = firebase.functions().httpsCallable('testFunctionDefaultRegion');
-      try {
-        await functionRunner({
-          type,
-          inputData,
-          asError: true,
-        });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-        should.deepEqual(e.details, inputData);
-      }
+    describe('HttpsError', function () {
+      it('errors return instance of HttpsError', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
 
-      type = 'string';
-      inputData = SAMPLE_DATA[type];
-      try {
-        await functionRunner({
-          type,
-          inputData,
-          asError: true,
-        });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.deepEqual(e.details, inputData);
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-      }
+        try {
+          await functionRunner({});
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.equal(e.details, null);
+          e.code.should.equal('invalid-argument');
+          e.message.should.equal('Invalid test requested.');
+        }
 
-      type = 'boolean';
-      inputData = SAMPLE_DATA[type];
-      try {
-        await functionRunner({
-          type,
-          inputData,
-          asError: true,
-        });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.deepEqual(e.details, inputData);
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-      }
-
-      type = 'null';
-      inputData = SAMPLE_DATA[type];
-      try {
-        await functionRunner({
-          type,
-          inputData,
-          asError: true,
-        });
-        return Promise.reject(new Error('Function did not reject with error.'));
-      } catch (e) {
-        should.deepEqual(e.details, inputData);
-        e.code.should.equal('cancelled');
-        e.message.should.equal(
-          'Response data was requested to be sent as part of an Error payload, so here we are!',
-        );
-      }
-
-      return Promise.resolve();
-    });
-
-    it('HttpsCallableOptions.timeout will error when timeout is exceeded', async function () {
-      const fnName = 'invertaseReactNativeFirebaseFunctionsEmulator';
-      const region = 'europe-west2';
-
-      const functions = firebase.app().functions(region);
-      functions.useFunctionsEmulator('http://api.rnfirebase.io');
-
-      try {
-        await functions.httpsCallable(fnName, { timeout: 1000 })({ testTimeout: '3000' });
-        return Promise.reject(new Error('Did not throw an Error.'));
-      } catch (error) {
-        error.message.should.containEql('DEADLINE').containEql('EXCEEDED');
         return Promise.resolve();
-      }
+      });
+
+      it('HttpsError.details -> allows returning complex data', async function () {
+        let type = 'deepObject';
+        let inputData = SAMPLE_DATA[type];
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'deepArray';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        return Promise.resolve();
+      });
+
+      it('HttpsError.details -> allows returning primitives', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        let type = 'number';
+        let inputData = SAMPLE_DATA[type];
+        const functionRunner = httpsCallable(getFunctions(getApp()), 'testFunctionDefaultRegionV2');
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+          should.deepEqual(e.details, inputData);
+        }
+
+        type = 'string';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'boolean';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        type = 'null';
+        inputData = SAMPLE_DATA[type];
+        try {
+          await functionRunner({
+            type,
+            inputData,
+            asError: true,
+          });
+          return Promise.reject(new Error('Function did not reject with error.'));
+        } catch (e) {
+          should.deepEqual(e.details, inputData);
+          e.code.should.equal('cancelled');
+          e.message.should.equal(
+            'Response data was requested to be sent as part of an Error payload, so here we are!',
+          );
+        }
+
+        return Promise.resolve();
+      });
+
+      it('HttpsCallableOptions.timeout will error when timeout is exceeded', async function () {
+        const { getApp } = modular;
+        const { getFunctions, httpsCallable } = functionsModular;
+        const functions = getFunctions(getApp());
+        const functionRunner = httpsCallable(functions, 'sleeperV2', { timeout: 1000 });
+
+        try {
+          await functionRunner({ delay: 3000 });
+          return Promise.reject(new Error('Did not throw an Error.'));
+        } catch (error) {
+          if (Platform.other) {
+            error.message.should.containEql('deadline-exceeded');
+          } else {
+            error.message.should.containEql('DEADLINE').containEql('EXCEEDED');
+          }
+          return Promise.resolve();
+        }
+      });
     });
   });
 });

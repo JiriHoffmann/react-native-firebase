@@ -19,41 +19,44 @@ on:
       - '.spellcheck.dict.txt'
       - '**/*.md'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   main:
     name: Create patch-package Patches
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Future ideas:
       # - make into an action, parameterize directories to pack, and package names to install
       # - name patches w/PR as "semver prerelease" and SHA as "semver build info". Needs patch-package enhancement.
-
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: 14
+          node-version: 22
 
-      - name: Get yarn cache directory path
-        id: yarn-cache-dir-path
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-
-      - uses: actions/cache@v2
-        name: Yarn Cache
+      - uses: actions/cache/restore@v4
+        name: Yarn Cache Restore
         id: yarn-cache
         with:
-          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/package.json') }}-v1
+          path: .yarn/cache
+          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('yarn.lock') }}
+          restore-keys: ${{ runner.os }}-yarn-v1
 
       - name: Yarn Install
-        uses: nick-invision/retry@v2
+        uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 10
+          timeout_minutes: 15
           retry_wait_seconds: 60
           max_attempts: 3
-          command: DETOX_DISABLE_POSTINSTALL=1 yarn --no-audit --prefer-offline
+          command: DETOX_DISABLE_POSTINSTALL=1 yarn && yarn lerna:prepare
 
       - name: Create Patches
+        env:
+          # yarn3+ by default disables lockfile alteration in CI. We want it.
+          YARN_ENABLE_IMMUTABLE_INSTALLS: false
         run: |
           PACKAGE_LIST=`find packages -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | egrep -v 'template|invites'`
           mkdir $HOME/packages
@@ -61,38 +64,50 @@ jobs:
             echo "Packing PR version of package $PACKAGE"
             pushd packages/$PACKAGE;
             yarn pack;
-            mv *tgz $HOME/packages;
+            mv package.tgz $HOME/packages/react-native-firebase-${PACKAGE}.tgz;
             ls -la $HOME/packages/*${PACKAGE}*
             popd;
           done
           ls -la $HOME/packages/
           cd $HOME
-          npx react-native init template
+          npx @react-native-community/cli init template --skip-install --skip-git-init
           cd template
-          yarn add patch-package --save-dev
+          yarn
+          yarn add patch-package --dev
           mkdir patches || true
           for PACKAGE in $PACKAGE_LIST; do
             echo "Installing package $PACKAGE into fresh template app, then clobbering with PR version"
-            yarn add @react-native-firebase/$PACKAGE
-            pushd node_modules/@react-native-firebase
-            tar -zxf $HOME/packages/react-native-firebase-${PACKAGE}-v*
-            mv $PACKAGE/package.json package/
-            \rm -fr $PACKAGE
-            mv package $PACKAGE
-            popd
-            npx patch-package @react-native-firebase/$PACKAGE || true
+            yarn add @react-native-firebase/$PACKAGE || true
+            if [ -d node_modules/@react-native-firebase/$PACKAGE ]; then
+              pushd node_modules/@react-native-firebase
+              tar -zxf $HOME/packages/react-native-firebase-${PACKAGE}.tgz
+              # yarn3+ pack does not handle the executable bits on our scripts correctly. Fix.
+              chmod 755 package/ios_config.sh && true
+              mv $PACKAGE/package.json package/
+              \rm -fr $PACKAGE
+              mv package $PACKAGE
+              popd
+              npx patch-package @react-native-firebase/$PACKAGE || true
+            fi
           done
           ls -la $HOME/template/patches
         shell: bash
 
       - name: Upload Test Patches
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: patches
           path: ~/template/patches/
-  
+
+      - uses: actions/cache/save@v4
+        name: Yarn Cache Save
+        if: "${{ github.ref == 'refs/heads/main' }}"
+        with:
+          path: .yarn/cache
+          key: ${{ runner.os }}-yarn-v1-${{ hashFiles('yarn.lock') }}
+
       # create a comment on the PR and any related issues with a direct link to the archive,
-      # a call for testers, and perhaps a paste-able set of commands to install them 
+      # a call for testers, and perhaps a paste-able set of commands to install them
       # (mkdir patches, curl -o etc, npx patch-package)
       # You need an artifact id to get a download link for it.
       # You need a workflow run id to get an artifact id.

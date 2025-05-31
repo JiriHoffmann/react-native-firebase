@@ -20,6 +20,7 @@ import {
   isFunction,
   isObject,
   isUndefined,
+  createDeprecationProxy,
 } from '@react-native-firebase/app/lib/common';
 import FirestoreDocumentChange from './FirestoreDocumentChange';
 import FirestoreDocumentSnapshot from './FirestoreDocumentSnapshot';
@@ -31,12 +32,14 @@ export default class FirestoreQuerySnapshot {
     this._source = nativeData.source;
     this._excludesMetadataChanges = nativeData.excludesMetadataChanges;
     this._changes = nativeData.changes.map($ => new FirestoreDocumentChange(firestore, $));
-    this._docs = nativeData.documents.map(data => {
+    this._docs = nativeData.documents.map($ => {
       if (converter && converter.fromFirestore) {
         try {
-          return new FirestoreDocumentSnapshot(
-            this._firestore,
-            this._converter.fromFirestore(documentSnapshot),
+          return createDeprecationProxy(
+            new FirestoreDocumentSnapshot(
+              this._firestore,
+              this._converter.fromFirestore(documentSnapshot),
+            ),
           );
         } catch (e) {
           throw new Error(
@@ -45,7 +48,7 @@ export default class FirestoreQuerySnapshot {
         }
       }
 
-      return new FirestoreDocumentSnapshot(firestore, data);
+      return createDeprecationProxy(new FirestoreDocumentSnapshot(firestore, $));
     });
     this._metadata = new FirestoreSnapshotMetadata(nativeData.metadata);
   }
@@ -124,7 +127,8 @@ export default class FirestoreQuerySnapshot {
     }
   }
 
-  isEqual(other) {
+  // send '...args' through as it may contain our namespace deprecation marker
+  isEqual(other, ...args) {
     if (!(other instanceof FirestoreQuerySnapshot)) {
       throw new Error(
         "firebase.firestore() QuerySnapshot.isEqual(*) 'other' expected a QuerySnapshot instance.",
@@ -146,7 +150,8 @@ export default class FirestoreQuerySnapshot {
       const thisDoc = this.docs[i];
       const otherDoc = other.docs[i];
 
-      if (!thisDoc.isEqual(otherDoc)) {
+      // send '...args' through as it may contain our namespace deprecation marker
+      if (!thisDoc.isEqual(otherDoc, ...args)) {
         return false;
       }
     }
