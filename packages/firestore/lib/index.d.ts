@@ -141,6 +141,33 @@ export namespace FirebaseFirestoreTypes {
     [key: string]: any;
   }
 
+  /** Primitive types. */
+  export type Primitive = string | number | boolean | undefined | null;
+
+  /**
+   * Similar to Typescript's `Partial<T>`, but allows nested fields to be
+   * omitted and FieldValues to be passed in as property values.
+   */
+    export type PartialWithFieldValue<T> =
+    | Partial<T>
+    | (T extends Primitive
+        ? T
+        : T extends {}
+          ? {[K in keyof T]?: PartialWithFieldValue<T[K]> | FieldValue}
+          : never);
+
+  /**
+   * Allows FieldValues to be passed in as a property value while maintaining
+   * type safety.
+   */
+  export type WithFieldValue<T> =
+    | T
+    | (T extends Primitive
+        ? T
+        : T extends {}
+          ? {[K in keyof T]: WithFieldValue<T[K]> | FieldValue}
+          : never);
+
   /**
    * A `CollectionReference` object can be used for adding documents, getting document references, and querying for
    * documents (using the methods inherited from `Query`).
@@ -1062,7 +1089,7 @@ export namespace FirebaseFirestoreTypes {
      *
      * @param snapshot The snapshot of the document to end at.
      */
-    endAt(snapshot: DocumentSnapshot<AppModelType, DbModelType>): Query<AppModelType, DbModelType>;
+    endAt(snapshot: DocumentSnapshot<any, any>): Query<AppModelType, DbModelType>;
 
     /**
      * Creates and returns a new Query that ends at the provided fields relative to the order of the query.
@@ -1104,7 +1131,7 @@ export namespace FirebaseFirestoreTypes {
      * @param snapshot The snapshot of the document to end before.
      */
     endBefore(
-      snapshot: DocumentSnapshot<AppModelType, DbModelType>,
+      snapshot: DocumentSnapshot<any, any>,
     ): Query<AppModelType, DbModelType>;
 
     /**
@@ -1372,7 +1399,7 @@ export namespace FirebaseFirestoreTypes {
      * @param snapshot The snapshot of the document to start after.
      */
     startAfter(
-      snapshot: DocumentSnapshot<AppModelType, DbModelType>,
+      snapshot: DocumentSnapshot<any, any>,
     ): Query<AppModelType, DbModelType>;
 
     /**
@@ -1417,7 +1444,7 @@ export namespace FirebaseFirestoreTypes {
      * @param snapshot The snapshot of the document to start at.
      */
     startAt(
-      snapshot: DocumentSnapshot<AppModelType, DbModelType>,
+      snapshot: DocumentSnapshot<any, any>,
     ): Query<AppModelType, DbModelType>;
 
     /**
@@ -1488,9 +1515,10 @@ export namespace FirebaseFirestoreTypes {
      *
      * Passing in `null` as the converter parameter removes the current converter.
      */
-    withConverter<AppModelType, DbModelType extends DocumentData>(
-      converter: FirestoreDataConverter<AppModelType, DbModelType> | null,
-    ): Query<AppModelType, DbModelType>;
+    withConverter<NewAppModelType, NewDbModelType extends DocumentData = DocumentData>(
+      converter: FirestoreDataConverter<NewAppModelType, NewDbModelType>
+    ): Query<NewAppModelType, NewDbModelType>;
+    withConverter(converter: null): Query;
   }
 
   /**
@@ -1499,22 +1527,62 @@ export namespace FirebaseFirestoreTypes {
    * Using the converter allows you to specify generic type arguments when storing and retrieving objects from Firestore.
    */
   export type FirestoreDataConverter<
-    AppModelType = DocumentData,
+    AppModelType,
     DbModelType extends DocumentData = DocumentData,
   > = {
     /**
-     * Called by the Firestore SDK to convert Firestore data into an object of type `T`.
+     * Called by the Firestore SDK to convert a custom model object of type
+     * `AppModelType` into a plain Javascript object (suitable for writing
+     * directly to the Firestore database) of type `DbModelType`.
      *
-     * @param snapshot The document snapshot of the incoming Firestore data to convert.
-     */
-    fromFirestore(snapshot: QueryDocumentSnapshot<DocumentData, DocumentData>): AppModelType;
-
-    /**
-     * Called by the Firestore SDK to convert a custom model object of type `T` into a plain Javascript object (suitable for writing directly to the Firestore database).
+     * To use set() with `merge` and `mergeFields`,
+     * toFirestore() must be defined with `Partial<T>`.
+     *
+     * The `WithFieldValue<T>` type extends `T` to also allow FieldValues such
+     * as `FieldValue.delete()` to be used as property values.
      *
      * @param data The data provided to calls to the mutation (`set`/`add`).
      */
-    toFirestore(data: Partial<AppModelType>): DbModelType;
+     toFirestore(
+       data: WithFieldValue<AppModelType>
+     ): WithFieldValue<DbModelType>;
+
+    /**
+     * Called by the Firestore SDK to convert a custom model object of type
+     * `AppModelType` into a plain Javascript object (suitable for writing
+     * directly to the Firestore database) of type `DbModelType`.
+     *
+     * To use set() with `merge` and `mergeFields`,
+     * toFirestore() must be defined with `Partial<T>`.
+     *
+     * The `PartialWithFieldValue<T>` type extends `Partial<T>` to allow
+     * FieldValues such as `FieldValue.delete()` to be used as property values.
+     * It also supports nested `Partial` by allowing nested fields to be
+     * omitted.
+     *
+     * @param data The data provided to calls to the mutation (`set`/`add`).
+     * @param options The options for the mutation.
+     */
+    toFirestore(
+      data: PartialWithFieldValue<AppModelType>,
+      options: SetOptions
+    ): PartialWithFieldValue<DbModelType>;
+    /**
+     * Called by the Firestore SDK to convert Firestore data into an object of
+     * type `AppModelType`. You can access your data by calling:
+     * `snapshot.data()`.
+     *
+     * Generally, the data returned from `snapshot.data()` can be cast to
+     * `DbModelType`; however, this is not guaranteed because Firestore does not
+     * enforce a schema on the database. For example, writes from a previous
+     * version of the application or writes from another client that did not use
+     * a type converter could have written data with different properties and/or
+     * property types. The implementation will need to choose whether to
+     * gracefully recover from non-conforming data or throw an error.
+     *
+     * @param snapshot The document snapshot of the incoming Firestore data to convert.
+     */
+    fromFirestore(snapshot: QueryDocumentSnapshot): AppModelType;
   };
 
   /**
@@ -2266,9 +2334,9 @@ export namespace FirebaseFirestoreTypes {
      *
      * @param collectionPath A slash-separated path to a collection.
      */
-    collection<AppModelType, DbModelType extends DocumentData>(
+    collection(
       collectionPath: string,
-    ): CollectionReference<AppModelType, DbModelType>;
+    ): CollectionReference;
 
     /**
      * Creates and returns a new Query that includes all documents in the database that are contained
@@ -2282,9 +2350,9 @@ export namespace FirebaseFirestoreTypes {
      *
      * @param collectionId Identifies the collections to query over. Every collection or subcollection with this ID as the last segment of its path will be included. Cannot contain a slash.
      */
-    collectionGroup<AppModelType, DbModelType extends DocumentData>(
+    collectionGroup(
       collectionId: string,
-    ): Query<AppModelType, DbModelType>;
+    ): Query;
 
     /**
      * Disables network usage for this instance. It can be re-enabled via `enableNetwork()`. While the
