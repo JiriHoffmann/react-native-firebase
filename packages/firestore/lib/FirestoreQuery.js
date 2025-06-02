@@ -113,7 +113,6 @@ export default class FirestoreQuery {
 
       if (this._modifiers.isCollectionGroupQuery()) {
         values.push(documentSnapshot.ref.path);
-        values.push(documentSnapshot.ref.path);
       } else {
         values.push(documentSnapshot.id);
       }

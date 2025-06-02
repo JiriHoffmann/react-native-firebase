@@ -36,10 +36,7 @@ export default class FirestoreQuerySnapshot {
       if (converter && converter.fromFirestore) {
         try {
           return createDeprecationProxy(
-            new FirestoreDocumentSnapshot(
-              this._firestore,
-              this._converter.fromFirestore(documentSnapshot),
-            ),
+            new FirestoreDocumentSnapshot(firestore, converter.fromFirestore($)),
           );
         } catch (e) {
           throw new Error(

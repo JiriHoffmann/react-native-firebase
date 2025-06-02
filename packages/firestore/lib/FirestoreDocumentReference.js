@@ -55,22 +55,16 @@ export default class FirestoreDocumentReference {
 
   // Returns a FirestoreDocumentSnapshot depending on whether a converter has been provided.
   _getConvertedSnapshot(data) {
-    const documentSnapshot = new FirestoreDocumentSnapshot(this._firestore, data);
-
     if (this._converter && this._converter.fromFirestore) {
       try {
-        return new FirestoreDocumentSnapshot(
-          this._firestore,
-          this._converter.fromFirestore(documentSnapshot),
-        );
+        return new FirestoreDocumentSnapshot(this._firestore, this._converter.fromFirestore(data));
       } catch (e) {
         throw new Error(
           `firebase.firestore().doc() "withConverter.fromFirestore" threw an error: ${e.message}.`,
         );
       }
     }
-
-    return documentSnapshot;
+    return new FirestoreDocumentSnapshot(this._firestore, data);
   }
 
   get firestore() {
@@ -137,8 +131,7 @@ export default class FirestoreDocumentReference {
 
     return this._firestore.native
       .documentGet(this.path, options)
-      .then(this._getConvertedSnapshot)
-      .then(data => createDeprecationProxy(new FirestoreDocumentSnapshot(this._firestore, data)));
+      .then(data => createDeprecationProxy(this._getConvertedSnapshot(data)));
   }
 
   isEqual(other) {
@@ -190,10 +183,9 @@ export default class FirestoreDocumentReference {
           handleError(NativeError.fromEvent(event.body.error, 'firestore'));
         } else {
           const documentSnapshot = createDeprecationProxy(
-            new FirestoreDocumentSnapshot(this._firestore, this._getConvertedSnapshot(event.body.snapshot)),
+            this._getConvertedSnapshot(event.body.snapshot),
           );
           handleSuccess(documentSnapshot);
-
         }
       },
     );
@@ -220,7 +212,6 @@ export default class FirestoreDocumentReference {
       throw new Error(`firebase.firestore().doc().set(_, *) ${e.message}.`);
     }
 
-
     let converted = data;
     if (this._converter) {
       try {
@@ -237,7 +228,6 @@ export default class FirestoreDocumentReference {
       buildNativeMap(converted, this._firestore._settings.ignoreUndefinedProperties),
       setOptions,
     );
-
   }
 
   update(...args) {
