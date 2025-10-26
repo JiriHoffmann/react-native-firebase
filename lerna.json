@@ -76,5 +76,6 @@
     "userUrlFormat": "{{host}}/{{user}}"
   },
   "ignoreChanges": ["**/docs/**", "**/.github/**", "**/e2e/**", "**/tests/**"],
-  "version": "22.2.0"
+  "version": "23.4.1",
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json"
 }

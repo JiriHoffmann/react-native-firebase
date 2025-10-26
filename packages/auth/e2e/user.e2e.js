@@ -208,23 +208,6 @@ describe('auth().currentUser', function () {
         await firebase.auth().currentUser.delete();
       });
 
-      it('should error if actionCodeSettings.dynamicLinkDomain is not a string', async function () {
-        const random = Utils.randString(12, '#aA');
-        const email = `${random}@${random}.com`;
-        await firebase.auth().createUserWithEmailAndPassword(email, random);
-        try {
-          firebase
-            .auth()
-            .currentUser.sendEmailVerification({ url: 'string', dynamicLinkDomain: 123 });
-          return Promise.reject(new Error('it did not error'));
-        } catch (error) {
-          error.message.should.containEql(
-            "'actionCodeSettings.dynamicLinkDomain' expected a string value.",
-          );
-        }
-        await firebase.auth().currentUser.delete();
-      });
-
       it('should error if handleCodeInApp is not a string', async function () {
         const random = Utils.randString(12, '#aA');
         const email = `${random}@${random}.com`;
@@ -455,27 +438,6 @@ describe('auth().currentUser', function () {
           return Promise.reject(new Error('it did not error'));
         } catch (error) {
           error.message.should.containEql("'actionCodeSettings.url' expected a string value.");
-        }
-        await firebase.auth().currentUser.delete();
-      });
-
-      it('should error if actionCodeSettings.dynamicLinkDomain is not a string', async function () {
-        const random = Utils.randString(12, '#aA');
-        const random2 = Utils.randString(12, '#aA');
-        const email = `${random}@${random}.com`;
-        const updateEmail = `${random2}@${random2}.com`;
-
-        await firebase.auth().createUserWithEmailAndPassword(email, random);
-        try {
-          firebase.auth().currentUser.verifyBeforeUpdateEmail(updateEmail, {
-            url: 'string',
-            dynamicLinkDomain: 123,
-          });
-          return Promise.reject(new Error('it did not error'));
-        } catch (error) {
-          error.message.should.containEql(
-            "'actionCodeSettings.dynamicLinkDomain' expected a string value.",
-          );
         }
         await firebase.auth().currentUser.delete();
       });
@@ -1019,7 +981,8 @@ describe('auth().currentUser', function () {
     describe('linkWithCredential()', function () {
       // hanging against auth emulator?
       it('should link anonymous account <-> email account', async function () {
-        const { getAuth, signInAnonymously, deleteUser, linkWithCredential } = authModular;
+        const { getAuth, signInAnonymously, deleteUser, linkWithCredential, EmailAuthProvider } =
+          authModular;
         const auth = getAuth();
 
         const random = Utils.randString(12, '#aA');
@@ -1030,7 +993,7 @@ describe('auth().currentUser', function () {
         const { currentUser } = auth;
 
         // Test
-        const credential = firebase.auth.EmailAuthProvider.credential(email, pass);
+        const credential = EmailAuthProvider.credential(email, pass);
 
         const linkedUserCredential = await linkWithCredential(currentUser, credential);
 
@@ -1049,7 +1012,8 @@ describe('auth().currentUser', function () {
       });
 
       it('should error on link anon <-> email if email already exists', async function () {
-        const { getAuth, signInAnonymously, deleteUser, linkWithCredential } = authModular;
+        const { getAuth, signInAnonymously, deleteUser, linkWithCredential, EmailAuthProvider } =
+          authModular;
         const auth = getAuth();
 
         await signInAnonymously(auth);
@@ -1057,7 +1021,7 @@ describe('auth().currentUser', function () {
 
         // Test
         try {
-          const credential = firebase.auth.EmailAuthProvider.credential(TEST_EMAIL, TEST_PASS);
+          const credential = EmailAuthProvider.credential(TEST_EMAIL, TEST_PASS);
           await linkWithCredential(currentUser, credential);
 
           // Clean up
@@ -1084,6 +1048,7 @@ describe('auth().currentUser', function () {
           createUserWithEmailAndPassword,
           deleteUser,
           reauthenticateWithCredential,
+          EmailAuthProvider,
         } = authModular;
         const auth = getAuth();
 
@@ -1094,7 +1059,7 @@ describe('auth().currentUser', function () {
         await createUserWithEmailAndPassword(auth, email, pass);
 
         // Test
-        const credential = firebase.auth.EmailAuthProvider.credential(email, pass);
+        const credential = EmailAuthProvider.credential(email, pass);
 
         await reauthenticateWithCredential(auth.currentUser, credential);
 
@@ -1158,25 +1123,6 @@ describe('auth().currentUser', function () {
           return Promise.reject(new Error('it did not error'));
         } catch (error) {
           error.message.should.containEql("'actionCodeSettings.url' expected a string value.");
-        }
-        await deleteUser(auth.currentUser);
-      });
-
-      it('should error if actionCodeSettings.dynamicLinkDomain is not a string', async function () {
-        const { getAuth, createUserWithEmailAndPassword, deleteUser, sendEmailVerification } =
-          authModular;
-
-        const auth = getAuth();
-        const random = Utils.randString(12, '#aA');
-        const email = `${random}@${random}.com`;
-        await createUserWithEmailAndPassword(auth, email, random);
-        try {
-          await sendEmailVerification(auth.currentUser, { url: 'string', dynamicLinkDomain: 123 });
-          return Promise.reject(new Error('it did not error'));
-        } catch (error) {
-          error.message.should.containEql(
-            "'actionCodeSettings.dynamicLinkDomain' expected a string value.",
-          );
         }
         await deleteUser(auth.currentUser);
       });
@@ -1470,30 +1416,6 @@ describe('auth().currentUser', function () {
         await deleteUser(auth.currentUser);
       });
 
-      it('should error if actionCodeSettings.dynamicLinkDomain is not a string', async function () {
-        const { getAuth, createUserWithEmailAndPassword, verifyBeforeUpdateEmail, deleteUser } =
-          authModular;
-        const auth = getAuth();
-        const random = Utils.randString(12, '#aA');
-        const random2 = Utils.randString(12, '#aA');
-        const email = `${random}@${random}.com`;
-        const updateEmail = `${random2}@${random2}.com`;
-
-        await createUserWithEmailAndPassword(auth, email, random);
-        try {
-          await verifyBeforeUpdateEmail(auth.currentUser, updateEmail, {
-            url: 'string',
-            dynamicLinkDomain: 123,
-          });
-          return Promise.reject(new Error('it did not error'));
-        } catch (error) {
-          error.message.should.containEql(
-            "'actionCodeSettings.dynamicLinkDomain' expected a string value.",
-          );
-        }
-        await deleteUser(auth.currentUser);
-      });
-
       it('should error if handleCodeInApp is not a boolean', async function () {
         const { getAuth, createUserWithEmailAndPassword, verifyBeforeUpdateEmail, deleteUser } =
           authModular;
@@ -1713,7 +1635,14 @@ describe('auth().currentUser', function () {
 
     describe('unlink()', function () {
       it('should unlink the email address', async function () {
-        const { getAuth, signInAnonymously, linkWithCredential, unlink, deleteUser } = authModular;
+        const {
+          getAuth,
+          signInAnonymously,
+          linkWithCredential,
+          unlink,
+          deleteUser,
+          EmailAuthProvider,
+        } = authModular;
         const auth = getAuth();
 
         const random = Utils.randString(12, '#aA');
@@ -1722,11 +1651,11 @@ describe('auth().currentUser', function () {
 
         await signInAnonymously(auth);
 
-        const credential = firebase.auth.EmailAuthProvider.credential(email, pass);
+        const credential = EmailAuthProvider.credential(email, pass);
         await linkWithCredential(auth.currentUser, credential);
 
         // Test
-        await unlink(auth.currentUser, firebase.auth.EmailAuthProvider.PROVIDER_ID);
+        await unlink(auth.currentUser, EmailAuthProvider.PROVIDER_ID);
 
         // Assertions
         const unlinkedUser = auth.currentUser;
@@ -1769,8 +1698,13 @@ describe('auth().currentUser', function () {
       }
 
       it('should update the phone number', async function () {
-        const { getAuth, signInWithPhoneNumber, updatePhoneNumber, verifyPhoneNumber } =
-          authModular;
+        const {
+          getAuth,
+          signInWithPhoneNumber,
+          updatePhoneNumber,
+          verifyPhoneNumber,
+          PhoneAuthProvider,
+        } = authModular;
         const auth = getAuth();
 
         const testPhone = await getRandomPhoneNumber();
@@ -1793,10 +1727,7 @@ describe('auth().currentUser', function () {
 
         try {
           const newSmsCode = await getLastSmsCode(newPhone);
-          const credential = firebase.auth.PhoneAuthProvider.credential(
-            newPhoneVerificationId,
-            newSmsCode,
-          );
+          const credential = PhoneAuthProvider.credential(newPhoneVerificationId, newSmsCode);
 
           // Update with number?
           await updatePhoneNumber(auth.currentUser, credential);

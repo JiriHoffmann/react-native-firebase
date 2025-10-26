@@ -556,9 +556,11 @@ describe('multi-factor modular', function () {
 
     describe('sign-in', function () {
       it('requires multi-factor auth when enrolled', async function () {
-        if (Platform.ios) {
-          this.skip();
-        }
+        // iOS receives:
+        //      NativeFirebaseError: [auth/unknown] MFA_ENROLLMENT_NOT_FOUND
+        // if (device.getPlatform() === 'ios') {
+        //   this.skip();
+        // }
         const { phoneNumber, email, password } = await createUserWithMultiFactor();
         const maskedNumber = '+********' + phoneNumber.substring(phoneNumber.length - 4);
 
@@ -768,7 +770,7 @@ describe('multi-factor modular', function () {
         }
 
         const { getApp } = modular;
-        const { signInWithEmailAndPassword, getAuth, multiFactor } = authModular;
+        const { signInWithEmailAndPassword, getAuth, multiFactor, PhoneAuthProvider } = authModular;
 
         const defaultAuth = getAuth(getApp());
 
@@ -777,7 +779,7 @@ describe('multi-factor modular', function () {
         try {
           const multiFactorUser = await multiFactor(defaultAuth.currentUser);
           const session = await multiFactorUser.getSession();
-          await new firebase.auth.PhoneAuthProvider(defaultAuth).verifyPhoneNumber({
+          await new PhoneAuthProvider(defaultAuth).verifyPhoneNumber({
             phoneNumber: getRandomPhoneNumber(),
             session,
           });

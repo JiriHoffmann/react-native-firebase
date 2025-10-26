@@ -17,20 +17,30 @@
  */
 const { execSync, spawn } = require('child_process');
 
-describe('Jet Tests', () => {
-  jest.retryTimes(3, { logErrorsBeforeRetry: true });
+describe('Jet Tests', function () {
+  jest.retryTimes(0, { logErrorsBeforeRetry: true });
 
-  it('runs all tests', async () => {
+  it('runs all tests', async function () {
     return new Promise(async (resolve, reject) => {
       const platform = detox.device.getPlatform();
-      const jetProcess = spawn('yarn', ['jet', `--target=${platform}`, '--coverage'], {
+      const jetArgs =
+        process.platform === 'win32'
+          ? ['jet', `--target=${platform}`] // NYC / coverage does not work on windows.
+          : ['jet', `--target=${platform}`, '--coverage'];
+      const jetProcess = spawn('yarn', jetArgs, {
         stdio: ['ignore', 'inherit', 'inherit'],
+        shell: true,
+      });
+      jetProcess.on('error', err => {
+        console.error(`Jet tests had an error: ${err}`);
+        reject(new Error(`Jet tests failed!`));
       });
       jetProcess.on('close', code => {
         if (code === 0) {
           resolve();
+        } else {
+          reject(new Error(`Jet tests failed!`));
         }
-        reject(new Error(`Jet tests failed!`));
       });
       await device.launchApp({
         newInstance: true,
@@ -62,7 +72,7 @@ afterAll(async function () {
 
   // Get the file off the device, into standard location for JaCoCo binary report
   // It will still need processing via gradle jacocoAndroidTestReport task for codecov, but it's available now
-  if (isAndroid) {
+  if (isAndroid && process.platform !== 'win32') {
     const pkg = 'com.invertase.testing';
     const emuOrig = `/data/user/0/${pkg}/files/coverage.ec`;
     const emuDest = '/data/local/tmp/detox/coverage.ec';
@@ -81,7 +91,7 @@ afterAll(async function () {
 
   try {
     await device.terminateApp();
-  } catch (e) {
+  } catch (_) {
     // No-op
   }
 });

@@ -3,6 +3,81 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [23.4.1](https://github.com/invertase/react-native-firebase/compare/v23.4.0...v23.4.1) (2025-10-14)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.4.0](https://github.com/invertase/react-native-firebase/compare/v23.3.1...v23.4.0) (2025-09-24)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.3.1](https://github.com/invertase/react-native-firebase/compare/v23.3.0...v23.3.1) (2025-09-08)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.3.0](https://github.com/invertase/react-native-firebase/compare/v23.2.2...v23.3.0) (2025-09-04)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.2.2](https://github.com/invertase/react-native-firebase/compare/v23.2.1...v23.2.2) (2025-09-03)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.2.1](https://github.com/invertase/react-native-firebase/compare/v23.2.0...v23.2.1) (2025-09-01)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.2.0](https://github.com/invertase/react-native-firebase/compare/v23.1.2...v23.2.0) (2025-08-29)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.1.2](https://github.com/invertase/react-native-firebase/compare/v23.1.1...v23.1.2) (2025-08-25)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.1.1](https://github.com/invertase/react-native-firebase/compare/v23.1.0...v23.1.1) (2025-08-22)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.1.0](https://github.com/invertase/react-native-firebase/compare/v23.0.1...v23.1.0) (2025-08-19)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.0.1](https://github.com/invertase/react-native-firebase/compare/v23.0.0...v23.0.1) (2025-08-12)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
+## [23.0.0](https://github.com/invertase/react-native-firebase/compare/v22.4.0...v23.0.0) (2025-08-07)
+
+### ⚠ BREAKING CHANGES
+
+- remove deprecated API from auth & crashlytics (#8636)
+
+### Bug Fixes
+
+- remove deprecated API from auth & crashlytics ([#8636](https://github.com/invertase/react-native-firebase/issues/8636)) ([213b939](https://github.com/invertase/react-native-firebase/commit/213b939b552e0f84fbccb136a03f23e9b5c8ade8))
+
+## [22.4.0](https://github.com/invertase/react-native-firebase/compare/v22.3.0...v22.4.0) (2025-07-10)
+
+### Features
+
+- **firestore:** add support for non-default databases [#8489](https://github.com/invertase/react-native-firebase/issues/8489) ([422badb](https://github.com/invertase/react-native-firebase/commit/422badbf9aed4f97cf2d4fc18ce1739759cc1ac1))
+
+## [22.3.0](https://github.com/invertase/react-native-firebase/compare/v22.2.1...v22.3.0) (2025-07-08)
+
+### Features
+
+- **firestore:** add support for onSnapshotsInSync ([#8379](https://github.com/invertase/react-native-firebase/issues/8379)) ([f8c1464](https://github.com/invertase/react-native-firebase/commit/f8c1464fc0249864e9c6bf01af7f8679e3d235cf))
+
+### Bug Fixes
+
+- **app:** firebase-js-sdk bump 11.3.1 > 11.10.0 ([29ea831](https://github.com/invertase/react-native-firebase/commit/29ea8310beed3eb0598bda55aacc29c100c7f770))
+- **firestore:** type definitions ([#8378](https://github.com/invertase/react-native-firebase/issues/8378)) ([497c6d1](https://github.com/invertase/react-native-firebase/commit/497c6d153a897226ddf195b4187ee6a3be99d1f2))
+
+## [22.2.1](https://github.com/invertase/react-native-firebase/compare/v22.2.0...v22.2.1) (2025-06-10)
+
+**Note:** Version bump only for package @react-native-firebase/firestore
+
 ## [22.2.0](https://github.com/invertase/react-native-firebase/compare/v22.1.0...v22.2.0) (2025-05-12)
 
 **Note:** Version bump only for package @react-native-firebase/firestore

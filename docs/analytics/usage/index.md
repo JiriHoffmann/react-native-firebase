@@ -1,9 +1,9 @@
 ---
 title: Analytics
 description: Installation and getting started with Analytics.
-icon: //static.invertase.io/assets/firebase/analytics.svg
+icon: //firebase.google.com/static/images/products/icons/run_analytics.svg
 next: /analytics/screen-tracking
-previous: /contributing
+previous: /ai/usage
 ---
 
 # Installation
@@ -127,12 +127,11 @@ with any of the following event names will throw an error.
 | `adunit_exposure`                | `app_background`               | `app_clear_data`                |
 | `app_remove`                     | `app_store_refund`             | `app_store_subscription_cancel` |
 | `app_store_subscription_convert` | `app_store_subscription_renew` | `app_update`                    |
-| `app_upgrade`                    | `dynamic_link_app_open`        | `dynamic_link_app_update`       |
-| `dynamic_link_first_open`        | `error`                        | `first_open`                    |
+| `app_upgrade`                    | `error`                        | `first_open`                    |
 | `first_visit`                    | `in_app_purchase`              | `notification_dismiss`          |
 | `notification_foreground`        | `notification_open`            | `notification_receive`          |
 | `os_update`                      | `session_start`                | `session_start_with_rollout`    |
-| `user_engagement`                |
+| `user_engagement`                |                                |                                 |
 
 ## App instance id
 
@@ -166,10 +165,8 @@ If you need to avoid IDFA usage while still using analytics, then you need `fire
 $RNFirebaseAnalyticsWithoutAdIdSupport = true
 ```
 
-During `pod install`, using that variable installs a new
-["Analytics With No Ad Ids"](https://firebase.google.com/support/release-notes/ios#version_7110_-_april_20_2021)
-pod the firebase-ios-sdk team has created, and allows both the use of Firebase Analytics in Kids Category apps,
-and use of Firebase Analytics without needing the App Tracking Transparency handling (assuming no other parts
+During `pod install`, using that variable installs the `FirebaseAnalytics/Core` Pod but not the `FirebaseAnalytics/IdentitySupport` Pod, so you may use Firebase Analytics in Kids Category apps,
+or Firebase Analytics without needing the App Tracking Transparency handling (assuming no other parts
 of your app handle data in a way that requires ATT)
 
 Note that for obvious reasons, configuring Firebase Analytics for use without IDFA is incompatible with AdMob
@@ -184,7 +181,7 @@ The way to do this using CocoaPods is to add this variable to your `Podfile` so 
 $RNFirebaseAnalyticsEnableAdSupport = true
 ```
 
-Note: this is setting will have no effect if you disabled Ad IDs as described above, since this setting is specifically linking in the `AdSupport` framework which requires the Ad IDs.
+Note: this setting will have no effect if you disabled Ad IDs as described above, since this setting is specifically linking in the `AdSupport` framework which requires the Ad IDs.
 
 # firebase.json
 

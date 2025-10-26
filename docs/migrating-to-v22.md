@@ -2,7 +2,7 @@
 title: Migrating to v22
 description: Migrate to React Native Firebase v22.
 previous: /
-next: /typescript
+next: /migrate-to-v23
 ---
 
 # Switching off warning logs
@@ -22,7 +22,7 @@ This is useful to help you quickly locate any remaining usage of the deprecated 
 Note that there may be modular API implementation errors within the react-native-firebase modules, this may still be useful as a troubleshooting aid when collaborating with the maintainers to correct these errors.
 
 ```js
-globalThis.RNFB_MODULAR_DEPRECATION_STRICT_MODE === true;
+globalThis.RNFB_MODULAR_DEPRECATION_STRICT_MODE = true;
 ```
 
 # Migrating to React Native modular API
