@@ -1,12 +1,9 @@
 import { FirebaseFirestoreTypes } from '../..';
+import { DocumentReference, DocumentSnapshot, Query } from './index';
 
-import Query = FirebaseFirestoreTypes.Query;
 import QueryCompositeFilterConstraint = FirebaseFirestoreTypes.QueryCompositeFilterConstraint;
 import WhereFilterOp = FirebaseFirestoreTypes.WhereFilterOp;
 import FieldPath = FirebaseFirestoreTypes.FieldPath;
-import QuerySnapshot = FirebaseFirestoreTypes.QuerySnapshot;
-import DocumentReference = FirebaseFirestoreTypes.DocumentReference;
-import DocumentSnapshot = FirebaseFirestoreTypes.DocumentSnapshot;
 import DocumentData = FirebaseFirestoreTypes.DocumentData;
 
 /** Describes the different query constraints available in this SDK. */
