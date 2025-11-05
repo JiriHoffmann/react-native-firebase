@@ -271,6 +271,7 @@ describe('withConverter() support', function () {
 
   it('requires the correct converter for Partial usage', async function () {
     return withTestDb(async db => {
+      db.settings({ ignoreUndefinedProperties: false });
       const coll = collection(db, 'posts');
       const ref = doc(coll, 'post').withConverter(postConverter);
       const batch = writeBatch(db);
@@ -281,6 +282,7 @@ describe('withConverter() support', function () {
       } catch (error) {
         error.message.should.containEql('Unsupported field value: undefined');
       }
+      db.settings({ ignoreUndefinedProperties: true });
       return Promise.resolve();
     });
   });
