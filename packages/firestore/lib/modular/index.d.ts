@@ -8,6 +8,7 @@ import FieldValue = FirebaseFirestoreTypes.FieldValue;
 import FieldPath = FirebaseFirestoreTypes.FieldPath;
 import PersistentCacheIndexManager = FirebaseFirestoreTypes.PersistentCacheIndexManager;
 import AggregateQuerySnapshot = FirebaseFirestoreTypes.AggregateQuerySnapshot;
+import SetOptions = FirebaseFirestoreTypes.SetOptions;
 
 /** Primitive types. */
 export type Primitive = string | number | boolean | undefined | null;
@@ -536,6 +537,240 @@ export interface DocumentReference<
 }
 
 /**
+ * A write batch, used to perform multiple writes as a single atomic unit.
+ *
+ * A `WriteBatch` object can be acquired by calling {@link writeBatch}. It
+ * provides methods for adding writes to the write batch. None of the writes
+ * will be committed (or visible locally) until {@link WriteBatch.commit} is
+ * called.
+ */
+export class WriteBatch {
+  /**
+   * Writes to the document referred to by the provided {@link
+   * DocumentReference}. If the document does not exist yet, it will be created.
+   *
+   * @param documentRef - A reference to the document to be set.
+   * @param data - An object of the fields and values for the document.
+   * @returns This `WriteBatch` instance. Used for chaining method calls.
+   */
+  set<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: WithFieldValue<AppModelType>,
+  ): WriteBatch;
+  /**
+   * Writes to the document referred to by the provided {@link
+   * DocumentReference}. If the document does not exist yet, it will be created.
+   * If you provide `merge` or `mergeFields`, the provided data can be merged
+   * into an existing document.
+   *
+   * @param documentRef - A reference to the document to be set.
+   * @param data - An object of the fields and values for the document.
+   * @param options - An object to configure the set behavior.
+   * @throws Error - If the provided input is not a valid Firestore document.
+   * @returns This `WriteBatch` instance. Used for chaining method calls.
+   */
+  set<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: PartialWithFieldValue<AppModelType>,
+    options: SetOptions,
+  ): WriteBatch;
+  /**
+   * Updates fields in the document referred to by the provided {@link
+   * DocumentReference}. The update will fail if applied to a document that does
+   * not exist.
+   *
+   * @param documentRef - A reference to the document to be updated.
+   * @param data - An object containing the fields and values with which to
+   * update the document. Fields can contain dots to reference nested fields
+   * within the document.
+   * @throws Error - If the provided input is not valid Firestore data.
+   * @returns This `WriteBatch` instance. Used for chaining method calls.
+   */
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: UpdateData<DbModelType>,
+  ): WriteBatch;
+  /**
+   * Updates fields in the document referred to by this {@link
+   * DocumentReference}. The update will fail if applied to a document that does
+   * not exist.
+   *
+   * Nested fields can be update by providing dot-separated field path strings
+   * or by providing `FieldPath` objects.
+   *
+   * @param documentRef - A reference to the document to be updated.
+   * @param field - The first field to update.
+   * @param value - The first value.
+   * @param moreFieldsAndValues - Additional key value pairs.
+   * @throws Error - If the provided input is not valid Firestore data.
+   * @returns This `WriteBatch` instance. Used for chaining method calls.
+   */
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    field: string | FieldPath,
+    value: unknown,
+    ...moreFieldsAndValues: unknown[]
+  ): WriteBatch;
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    fieldOrUpdateData: string | FieldPath | UpdateData<DbModelType>,
+    value?: unknown,
+    ...moreFieldsAndValues: unknown[]
+  ): WriteBatch;
+
+  /**
+   * Deletes the document referred to by the provided {@link DocumentReference}.
+   *
+   * @param documentRef - A reference to the document to be deleted.
+   * @returns This `WriteBatch` instance. Used for chaining method calls.
+   */
+  delete<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+  ): WriteBatch;
+  /**
+   * Commits all of the writes in this write batch as a single atomic unit.
+   *
+   * The result of these writes will only be reflected in document reads that
+   * occur after the returned promise resolves. If the client is offline, the
+   * write fails. If you would like to see local modifications or buffer writes
+   * until the client is online, use the full Firestore SDK.
+   *
+   * @returns A `Promise` resolved once all of the writes in the batch have been
+   * successfully written to the backend as an atomic unit (note that it won't
+   * resolve while you're offline).
+   */
+  commit(): Promise<void>;
+}
+
+/**
+ * A reference to a transaction.
+ *
+ * The `Transaction` object passed to a transaction's `updateFunction` provides
+ * the methods to read and write data within the transaction context. See
+ * {@link runTransaction}.
+ */
+export class Transaction extends LiteTransaction {
+  /**
+   * Reads the document referenced by the provided {@link DocumentReference}.
+   *
+   * @param documentRef - A reference to the document to be read.
+   * @returns A `DocumentSnapshot` with the read data.
+   */
+  get<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+  ): Promise<DocumentSnapshot<AppModelType, DbModelType>>;
+
+  /**
+   * Writes to the document referred to by the provided {@link
+   * DocumentReference}. If the document does not exist yet, it will be created.
+   *
+   * @param documentRef - A reference to the document to be set.
+   * @param data - An object of the fields and values for the document.
+   * @throws Error - If the provided input is not a valid Firestore document.
+   * @returns This `Transaction` instance. Used for chaining method calls.
+   */
+  set<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: WithFieldValue<AppModelType>,
+  ): this;
+  /**
+   * Writes to the document referred to by the provided {@link
+   * DocumentReference}. If the document does not exist yet, it will be created.
+   * If you provide `merge` or `mergeFields`, the provided data can be merged
+   * into an existing document.
+   *
+   * @param documentRef - A reference to the document to be set.
+   * @param data - An object of the fields and values for the document.
+   * @param options - An object to configure the set behavior.
+   * @throws Error - If the provided input is not a valid Firestore document.
+   * @returns This `Transaction` instance. Used for chaining method calls.
+   */
+  set<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: PartialWithFieldValue<AppModelType>,
+    options: SetOptions,
+  ): this;
+
+  /**
+   * Updates fields in the document referred to by the provided {@link
+   * DocumentReference}. The update will fail if applied to a document that does
+   * not exist.
+   *
+   * @param documentRef - A reference to the document to be updated.
+   * @param data - An object containing the fields and values with which to
+   * update the document. Fields can contain dots to reference nested fields
+   * within the document.
+   * @throws Error - If the provided input is not valid Firestore data.
+   * @returns This `Transaction` instance. Used for chaining method calls.
+   */
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    data: UpdateData<DbModelType>,
+  ): this;
+  /**
+   * Updates fields in the document referred to by the provided {@link
+   * DocumentReference}. The update will fail if applied to a document that does
+   * not exist.
+   *
+   * Nested fields can be updated by providing dot-separated field path
+   * strings or by providing `FieldPath` objects.
+   *
+   * @param documentRef - A reference to the document to be updated.
+   * @param field - The first field to update.
+   * @param value - The first value.
+   * @param moreFieldsAndValues - Additional key/value pairs.
+   * @throws Error - If the provided input is not valid Firestore data.
+   * @returns This `Transaction` instance. Used for chaining method calls.
+   */
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    field: string | FieldPath,
+    value: unknown,
+    ...moreFieldsAndValues: unknown[]
+  ): this;
+  update<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+    fieldOrUpdateData: string | FieldPath | UpdateData<DbModelType>,
+    value?: unknown,
+    ...moreFieldsAndValues: unknown[]
+  ): this;
+  /**
+   * Deletes the document referred to by the provided {@link DocumentReference}.
+   *
+   * @param documentRef - A reference to the document to be deleted.
+   * @returns This `Transaction` instance. Used for chaining method calls.
+   */
+  delete<AppModelType, DbModelType extends DocumentData>(
+    documentRef: DocumentReference<AppModelType, DbModelType>,
+  ): this;
+}
+
+/**
+ * Executes the given `updateFunction` and then attempts to commit the changes
+ * applied within the transaction. If any document read within the transaction
+ * has changed, Cloud Firestore retries the `updateFunction`. If it fails to
+ * commit after 5 attempts, the transaction fails.
+ *
+ * The maximum number of writes allowed in a single transaction is 500.
+ *
+ * @param firestore - A reference to the Firestore database to run this
+ * transaction against.
+ * @param updateFunction - The function to execute within the transaction
+ * context.
+ * @param options - An options object to configure maximum number of attempts to
+ * commit.
+ * @returns If the transaction completed successfully or was explicitly aborted
+ * (the `updateFunction` returned a failed promise), the promise returned by the
+ * `updateFunction `is returned here. Otherwise, if the transaction failed, a
+ * rejected promise with the corresponding failure error is returned.
+ */
+export function runTransaction<T>(
+  firestore: Firestore,
+  updateFunction: (transaction: Transaction) => Promise<T>,
+  options?: TransactionOptions,
+): Promise<T>;
+
+/**
  * Gets a `DocumentReference` instance that refers to the document at the
  * specified absolute path.
  *
@@ -717,7 +952,10 @@ export function collectionGroup(
  * @returns A `Promise` resolved once the data has been successfully written
  * to the backend (note that it won't resolve while you're offline).
  */
-export function setDoc<T>(reference: DocumentReference<T>, data: WithFieldValue<T>): Promise<void>;
+export function setDoc<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
+  data: WithFieldValue<AppModelType>,
+): Promise<void>;
 
 /**
  * Writes to the document referred to by the specified `DocumentReference`. If
@@ -730,18 +968,11 @@ export function setDoc<T>(reference: DocumentReference<T>, data: WithFieldValue<
  * @returns A Promise resolved once the data has been successfully written
  * to the backend (note that it won't resolve while you're offline).
  */
-export function setDoc<T>(
-  reference: DocumentReference<T>,
-  data: PartialWithFieldValue<T>,
-  options: FirebaseFirestoreTypes.SetOptions,
+export function setDoc<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
+  data: PartialWithFieldValue<AppModelType>,
+  options: SetOptions,
 ): Promise<void>;
-
-export function setDoc<T>(
-  reference: DocumentReference<T>,
-  data: PartialWithFieldValue<T>,
-  options?: FirebaseFirestoreTypes.SetOptions,
-): Promise<void>;
-
 /**
  * Updates fields in the document referred to by the specified
  * `DocumentReference`. The update will fail if applied to a document that does
@@ -754,7 +985,10 @@ export function setDoc<T>(
  * @returns A `Promise` resolved once the data has been successfully written
  * to the backend (note that it won't resolve while you're offline).
  */
-export function updateDoc<T>(reference: DocumentReference<T>, data: UpdateData<T>): Promise<void>;
+export function updateDoc<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
+  data: UpdateData<DbModelType>,
+): Promise<void>;
 /**
  * Updates fields in the document referred to by the specified
  * `DocumentReference` The update will fail if applied to a document that does
@@ -770,13 +1004,12 @@ export function updateDoc<T>(reference: DocumentReference<T>, data: UpdateData<T
  * @returns A `Promise` resolved once the data has been successfully written
  * to the backend (note that it won't resolve while you're offline).
  */
-export function updateDoc(
-  reference: DocumentReference<unknown>,
+export function updateDoc<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
   field: string | FieldPath,
   value: unknown,
   ...moreFieldsAndValues: unknown[]
 ): Promise<void>;
-
 /**
  * Add a new document to specified `CollectionReference` with the given data,
  * assigning it a document ID automatically.
@@ -912,7 +1145,7 @@ export function setLogLevel(logLevel: LogLevel): void;
  */
 export function runTransaction<T>(
   firestore: Firestore,
-  updateFunction: (transaction: FirebaseFirestoreTypes.Transaction) => Promise<T>,
+  updateFunction: (transaction: Transaction) => Promise<T>,
 ): Promise<T>;
 
 /**
@@ -1120,7 +1353,7 @@ export function namedQuery(firestore: Firestore, name: string): Promise<Query | 
  * @returns A `WriteBatch` that can be used to atomically execute multiple
  * writes.
  */
-export function writeBatch(firestore: Firestore): FirebaseFirestoreTypes.WriteBatch;
+export function writeBatch(firestore: Firestore): WriteBatch;
 
 /**
  * Gets the `PersistentCacheIndexManager` instance used by this Cloud Firestore instance.

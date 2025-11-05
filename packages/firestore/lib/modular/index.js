@@ -1,14 +1,15 @@
 /**
  * @typedef {import('..').FirebaseFirestoreTypes} FirebaseFirestoreTypes
- * @typedef {import('..').FirebaseFirestoreTypes.CollectionReference} CollectionReference
  * @typedef {import('..').FirebaseFirestoreTypes.DocumentData} DocumentData
- * @typedef {import('..').FirebaseFirestoreTypes.DocumentReference} DocumentReference
  * @typedef {import('..').FirebaseFirestoreTypes.FieldPath} FieldPath
  * @typedef {import('..').FirebaseFirestoreTypes.Module} Firestore
- * @typedef {import('..').FirebaseFirestoreTypes.Query} Query
  * @typedef {import('..').FirebaseFirestoreTypes.SetOptions} SetOptions
  * @typedef {import('..').FirebaseFirestoreTypes.Settings} FirestoreSettings
  * @typedef {import('..').FirebaseFirestoreTypes.PersistentCacheIndexManager} PersistentCacheIndexManager
+ * @typedef {import('.').CollectionReference} CollectionReference
+ * @typedef {import('.').DocumentReference} DocumentReference
+ * @typedef {import('./query').Query} Query
+
  * @typedef {import('@firebase/app').FirebaseApp} FirebaseApp
  */
 

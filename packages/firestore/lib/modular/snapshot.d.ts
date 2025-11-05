@@ -206,10 +206,10 @@ export interface QuerySnapshot<
  * @returns An unsubscribe function that can be called to cancel
  * the snapshot listener.
  */
-export function onSnapshot<T>(
-  reference: DocumentReference<T>,
+export function onSnapshot<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
   observer: {
-    next?: (snapshot: DocumentSnapshot<T>) => void;
+    next?: (snapshot: DocumentSnapshot<AppModelType, DbModelType>) => void;
     error?: (error: FirestoreError) => void;
     complete?: () => void;
   },
@@ -228,11 +228,11 @@ export function onSnapshot<T>(
  * @returns An unsubscribe function that can be called to cancel
  * the snapshot listener.
  */
-export function onSnapshot<T>(
-  reference: DocumentReference<T>,
+export function onSnapshot<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
   options: SnapshotListenOptions,
   observer: {
-    next?: (snapshot: DocumentSnapshot<T>) => void;
+    next?: (snapshot: DocumentSnapshot<AppModelType, DbModelType>) => void;
     error?: (error: FirestoreError) => void;
     complete?: () => void;
   },
@@ -255,9 +255,9 @@ export function onSnapshot<T>(
  * @returns An unsubscribe function that can be called to cancel
  * the snapshot listener.
  */
-export function onSnapshot<T>(
-  reference: DocumentReference<T>,
-  onNext: (snapshot: DocumentSnapshot<T>) => void,
+export function onSnapshot<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
+  onNext: (snapshot: DocumentSnapshot<AppModelType, DbModelType>) => void,
   onError?: (error: FirestoreError) => void,
   onCompletion?: () => void,
 ): Unsubscribe;
@@ -280,10 +280,10 @@ export function onSnapshot<T>(
  * @returns An unsubscribe function that can be called to cancel
  * the snapshot listener.
  */
-export function onSnapshot<T>(
-  reference: DocumentReference<T>,
+export function onSnapshot<AppModelType, DbModelType extends DocumentData>(
+  reference: DocumentReference<AppModelType, DbModelType>,
   options: SnapshotListenOptions,
-  onNext: (snapshot: DocumentSnapshot<T>) => void,
+  onNext: (snapshot: DocumentSnapshot<AppModelType, DbModelType>) => void,
   onError?: (error: FirestoreError) => void,
   onCompletion?: () => void,
 ): Unsubscribe;
