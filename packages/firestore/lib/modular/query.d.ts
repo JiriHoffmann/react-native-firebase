@@ -21,7 +21,7 @@ export type QueryConstraintType =
  * An `AppliableConstraint` is an abstraction of a constraint that can be applied
  * to a Firestore query.
  */
-export class AppliableConstraint {
+export abstract class AppliableConstraint {
   /**
    * Takes the provided {@link Query} and returns a copy of the {@link Query} with this
    * {@link AppliableConstraint} applied.
@@ -39,9 +39,9 @@ export class AppliableConstraint {
  * can then be passed to {@link (query:1)} to create a new query instance that
  * also contains this `QueryConstraint`.
  */
-export class QueryConstraint extends AppliableConstraint {
+export abstract class QueryConstraint extends AppliableConstraint {
   /** The type of this query constraint */
-  readonly type: QueryConstraintType;
+  abstract readonly type: QueryConstraintType;
 
   /**
    * Takes the provided {@link Query} and returns a copy of the {@link Query} with this
