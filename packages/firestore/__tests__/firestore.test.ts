@@ -946,6 +946,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => getCountFromServer(query),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.count(),
           'count',
         );
@@ -958,6 +959,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => getCountFromServer(query),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.countFromServer(),
           'countFromServer',
         );
@@ -970,6 +972,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => endAt('foo'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.endAt('foo'),
           'endAt',
         );
@@ -982,6 +985,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => endBefore('foo'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.endBefore('foo'),
           'endBefore',
         );
@@ -994,6 +998,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => getDocs(query),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.get(),
           'get',
         );
@@ -1001,12 +1006,12 @@ describe('Firestore', function () {
 
       it('CollectionReference.isEqual()', function () {
         const firestore = getFirestore();
-
         const query = collection(firestore, 'test');
 
         collectionRefV9Deprecation(
           // no equivalent method
           () => {},
+          // @ts-expect-error Combines modular and namespace imports
           () => query.isEqual(query),
           'isEqual',
         );
@@ -1019,6 +1024,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => limit(9),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.limit(9),
           'limit',
         );
@@ -1031,6 +1037,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => limitToLast(9),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.limitToLast(9),
           'limitToLast',
         );
@@ -1043,6 +1050,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => onSnapshot(query, () => {}),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.onSnapshot(() => {}),
           'onSnapshot',
         );
@@ -1055,6 +1063,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => orderBy('foo', 'asc'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.orderBy('foo', 'asc'),
           'orderBy',
         );
@@ -1067,6 +1076,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => startAfter('foo'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.startAfter('foo'),
           'startAfter',
         );
@@ -1079,6 +1089,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => startAt('foo'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.startAt('foo'),
           'startAt',
         );
@@ -1091,6 +1102,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => where('foo', '==', 'bar'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.where('foo', '==', 'bar'),
           'where',
         );
@@ -1103,6 +1115,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => addDoc(query, { foo: 'bar' }),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.add({ foo: 'bar' }),
           'add',
         );
@@ -1115,6 +1128,7 @@ describe('Firestore', function () {
 
         collectionRefV9Deprecation(
           () => doc(query, 'bar'),
+          // @ts-expect-error Combines modular and namespace imports
           () => query.doc('foo'),
           'doc',
         );
@@ -1140,6 +1154,7 @@ describe('Firestore', function () {
         const docRef = firestore.doc('some/foo');
 
         docRefV9Deprecation(
+          // @ts-expect-error Combines modular and namespace imports
           () => deleteDoc(docRef),
           () => docRef.delete(),
           'delete',
@@ -1152,6 +1167,7 @@ describe('Firestore', function () {
         const docRef = firestore.doc('some/foo');
 
         docRefV9Deprecation(
+          // @ts-expect-error Combines modular and namespace imports
           () => getDoc(docRef),
           () => docRef.get(),
           'get',
@@ -1177,6 +1193,7 @@ describe('Firestore', function () {
         const docRef = firestore.doc('some/foo');
 
         docRefV9Deprecation(
+          // @ts-expect-error Combines modular and namespace imports
           () => onSnapshot(docRef, () => {}),
           () => docRef.onSnapshot(() => {}),
           'onSnapshot',
@@ -1189,6 +1206,7 @@ describe('Firestore', function () {
         const docRef = firestore.doc('some/foo');
 
         docRefV9Deprecation(
+          // @ts-expect-error Combines modular and namespace imports
           () => setDoc(docRef, { foo: 'bar' }),
           () => docRef.set({ foo: 'bar' }),
           'set',
@@ -1201,6 +1219,7 @@ describe('Firestore', function () {
         const docRef = firestore.doc('some/foo');
 
         docRefV9Deprecation(
+          // @ts-expect-error Combines modular and namespace imports
           () => updateDoc(docRef, { foo: 'bar' }),
           () => docRef.update({ foo: 'bar' }),
           'update',
