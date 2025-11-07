@@ -4,9 +4,9 @@
  * @typedef {import('..').FirebaseFirestoreTypes.WhereFilterOp} WhereFilterOp
  * @typedef {import('../FirestoreFilter')._Filter} _Filter
  * @typedef {import('.').DocumentReference} DocumentReference
+ * @typedef {import('.').Query} Query
  * @typedef {import('./snapshot').QuerySnapshot} QuerySnapshot
  * @typedef {import('./snapshot').DocumentSnapshot} DocumentSnapshot
- * @typedef {import('./query').Query} Query
  * @typedef {import('./query').QueryConstraint} IQueryConstraint
  * @typedef {import('./query').OrderByDirection} OrderByDirection
  * @typedef {import('./query').QueryFieldFilterConstraint} QueryFieldFilterConstraint

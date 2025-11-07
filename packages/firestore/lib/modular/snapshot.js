@@ -1,5 +1,5 @@
 /**
- * @typedef {import('./query').Query} Query
+ * @typedef {import('.').Query} Query
  * @typedef {import('.').DocumentReference} DocumentReference
  */
 
