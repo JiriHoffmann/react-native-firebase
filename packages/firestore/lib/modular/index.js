@@ -8,7 +8,7 @@
  * @typedef {import('..').FirebaseFirestoreTypes.PersistentCacheIndexManager} PersistentCacheIndexManager
  * @typedef {import('.').CollectionReference} CollectionReference
  * @typedef {import('.').DocumentReference} DocumentReference
- * @typedef {import('./query').Query} Query
+ * @typedef {import('.').Query} Query
 
  * @typedef {import('@firebase/app').FirebaseApp} FirebaseApp
  */
