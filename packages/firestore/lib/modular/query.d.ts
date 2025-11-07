@@ -183,7 +183,7 @@ export function orderBy(
  * @param snapshot - The snapshot of the document to start at.
  * @returns A {@link QueryStartAtConstraint} to pass to `query()`.
  */
-export function startAt(snapshot: DocumentSnapshot<unknown>): QueryStartAtConstraint;
+export function startAt(snapshot: DocumentSnapshot): QueryStartAtConstraint;
 /**
  *
  * Creates a {@link QueryStartAtConstraint} that modifies the result set to
@@ -196,9 +196,7 @@ export function startAt(snapshot: DocumentSnapshot<unknown>): QueryStartAtConstr
  */
 export function startAt(...fieldValues: unknown[]): QueryStartAtConstraint;
 
-export function startAt(
-  ...docOrFields: Array<unknown | DocumentSnapshot<unknown>>
-): QueryStartAtConstraint;
+export function startAt(...docOrFields: Array<unknown | DocumentSnapshot>): QueryStartAtConstraint;
 
 /**
  * Creates a {@link QueryStartAtConstraint} that modifies the result set to

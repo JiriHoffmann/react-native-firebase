@@ -827,12 +827,6 @@ export declare function doc<AppModelType, DbModelType extends DocumentData>(
   ...pathSegments: string[]
 ): DocumentReference<DocumentData, DocumentData>;
 
-export function doc<T>(
-  parent: Firestore | CollectionReference<T> | DocumentReference<unknown>,
-  path?: string,
-  ...pathSegments: string[]
-): DocumentReference;
-
 /**
  * Gets a `CollectionReference` instance that refers to the collection at
  * the specified absolute path.
@@ -901,12 +895,6 @@ export declare function collection<AppModelType, DbModelType extends DocumentDat
  */
 export function collection(
   reference: DocumentReference,
-  path: string,
-  ...pathSegments: string[]
-): CollectionReference<DocumentData>;
-
-export function collection(
-  parent: Firestore | DocumentReference<unknown> | CollectionReference<unknown>,
   path: string,
   ...pathSegments: string[]
 ): CollectionReference<DocumentData>;

@@ -45,7 +45,7 @@ export function getFirestore(app, databaseId) {
 }
 
 /**
- * @param {Firestore | CollectionReference | DocumentReference<unknown>} parent
+ * @param {Firestore | CollectionReference | DocumentReference} parent
  * @param {string?} path
  * @param {string?} pathSegments
  * @returns {DocumentReference}
@@ -59,7 +59,7 @@ export function doc(parent, path, ...pathSegments) {
 }
 
 /**
- * @param {Firestore | DocumentReference<unknown> | CollectionReference<unknown>} parent
+ * @param {Firestore | DocumentReference | CollectionReference} parent
  * @param {string} path
  * @param {string?} pathSegments
  * @returns {CollectionReference<DocumentData>}
