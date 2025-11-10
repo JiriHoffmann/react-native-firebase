@@ -527,7 +527,7 @@ withTestDoc(async doc => {
 });
 
 // allows certain types but not others
-withTestDoc(async doc => {
+withTestDoc(async () => {
   const withTryCatch = async (fn: () => Promise<void>): Promise<void> => {
     try {
       await fn();
@@ -939,3 +939,4 @@ withTestDb(async db => {
     });
   });
 });
+
