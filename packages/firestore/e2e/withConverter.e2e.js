@@ -30,7 +30,10 @@ const {
   getDocs,
   writeBatch,
   increment,
+  initializeFirestore,
 } = firestoreModular;
+const { getApp } = modular;
+
 
 // Used for testing the FirestoreDataConverter.
 class Post {
@@ -82,6 +85,16 @@ const postConverterMerge = {
 
 function withTestDb(fn) {
   return fn(getFirestore());
+}
+
+async function withModifiedUndefinedPropertiesTestDb(fn) {
+  const db = await initializeFirestore(getApp(), {
+    ignoreUndefinedProperties: false,
+  });
+  await fn(db);
+  await initializeFirestore(getApp(), {
+    ignoreUndefinedProperties: true,
+  });
 }
 
 function withTestCollection(fn) {
@@ -276,7 +289,7 @@ describe('firestore.Transaction', function () {
 
     it('requires the correct converter for Partial usage', async function () {
       const db = firebase.firestore();
-      db._settings.ignoreUndefinedProperties = false;
+      db.settings({ ignoreUndefinedProperties: false });
       const coll = db.collection('posts');
       const ref = coll.doc('post').withConverter(postConverter);
       const batch = db.batch();
@@ -287,7 +300,7 @@ describe('firestore.Transaction', function () {
       } catch (error) {
         error.message.should.containEql('Unsupported field value: undefined');
       }
-      db._settings.ignoreUndefinedProperties = true;
+      db.settings({ ignoreUndefinedProperties: true });
       return Promise.resolve();
     });
 
@@ -519,8 +532,7 @@ describe('firestore.Transaction', function () {
     });
 
     it('requires the correct converter for Partial usage', async function () {
-      return withTestDb(async db => {
-        db._settings.ignoreUndefinedProperties = false;
+      return withModifiedUndefinedPropertiesTestDb(async db => {
         const coll = collection(db, 'posts');
         const ref = doc(coll, 'post').withConverter(postConverter);
         const batch = writeBatch(db);
@@ -531,7 +543,6 @@ describe('firestore.Transaction', function () {
         } catch (error) {
           error.message.should.containEql('Unsupported field value: undefined');
         }
-        db._settings.ignoreUndefinedProperties = true;
         return Promise.resolve();
       });
     });
